@@ -328,7 +328,7 @@ select 字段列表 from 表名 limit 起始索引,查询记录数;
 
 ### DQL-执行顺序
 
-![image-20260710105237117](./assets/MySQL/image-20260710105237117.png)
+[![image-20260710105237117](./assets/MySQL/image-20260710105237117.png)](https://github.com/wrenxf/go-learning/blob/master/assets/MySQL/image-20260710105237117.png)
 
 ## DCL
 
