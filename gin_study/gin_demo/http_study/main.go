@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		// 如果服务器启动失败，打印错误信息并退出
 		// 注意：这里用的是 println 而不是 fmt.Println
-		println("http serve failed, err:%v\n", err)
+		fmt.Printf("http serve failed, err:%v\n", err)
 		return
 	}
 }
