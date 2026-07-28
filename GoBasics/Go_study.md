@@ -1,0 +1,697 @@
+# Go语言关键字
+
+- Go语言中一共有25个关键字
+
+| 1           | 2          | 3              | 4          | 5             | 6           | 7            | 8          |
+| ----------- | ---------- | -------------- | ---------- | ------------- | ----------- | ------------ | ---------- |
+| ***if***    | ***else*** | ***switch***   | ***case*** | ***default*** | ***break*** | ***return*** | ***goto*** |
+| fallthrough | ***for***  | ***continue*** | type       | ***struct***  | var         | ***const***  | map        |
+| func        | interface  | range          | import     | package       | defer       | go           | select     |
+| chan        |            |                |            |               |             |              |            |
+
+```go
+%d          十进制整数
+%x, %o, %b  十六进制，八进制，二进制整数。
+%f, %g, %e  浮点数： 3.141593 3.141592653589793 3.141593e+00
+%t          布尔：true或false
+%c          字符（rune） (Unicode码点)
+%s          字符串
+%q          带双引号的字符串"abc"或带单引号的字符'c'
+%v          变量的自然形式（natural format）
+%T          变量的类型
+%%          字面上的百分号标志（无操作数）
+```
+
+
+
+# 1.Go语言定义变量
+
+## 1.var定义变量
+
+```go
+var 变量名 类型=表达式
+```
+
+```go
+var name string="zhangsan"
+```
+
+## 2.类型推导方式定义变量
+
+a在函数内部，可以使用更简略的:=方式声明并初始化变量。 
+
+**注意：短变量只能用于声明局部变量，不能用于全局变量的声明**
+
+```go
+变量名 := 表达式
+```
+
+```go
+n := 10
+```
+
+# 切片
+
+切片（Slice）是一个拥有相同类型元素的可变长度的序列。它是基于数组类型做的一层封装。 它非常灵活，支持自动扩容。 
+
+切片是一个**引用类型**，它的内部结构包含**地址**、**长度**和**容量**。
+
+ 声明切片类型的基本语法如下： 
+
+```go
+var name []T 
+```
+
+其中： 
+
+1. name:表示变量名 
+2. T:表示切片中的元素类型
+
+## 关于 nil 的认识
+
+当你声明了一个变量 , 但却还并没有赋值时 , golang 中会自动给你的变量赋值一个默认零
+值。这是每种类型对应的零值。
+
+```go
+bool -> false
+numbers -> 0
+string-> "" 
+pointers -> nil
+slices -> nil
+maps -> nil
+channels -> nil
+functions -> nil
+interfaces -> nil
+```
+
+## 切片的循环遍历
+
+切片的循环遍历和数组的循环遍历是一样的
+
+```go
+var a = []string{"北京", "上海", "深圳"}
+// 方法 1：for 循环遍历
+for i := 0; i < len(a); i++ {
+fmt.Println(a[i])
+}
+// 方法 2：for range 遍历
+for index, value := range a {
+fmt.Println(index, value)
+}
+```
+
+## 基于数组定义切片
+
+由于切片的底层就是一个数组，所以我们可以基于数组定义切片。
+
+```go
+func main() {
+// 基于数组定义切片
+a := [5]int{55, 56, 57, 58, 59}
+b := a[1:4] //基于数组 a 创建切片，包括元素 a[1],a[2],a[3]
+fmt.Println(b) //[56 57 58]
+fmt.Printf("type of b:%T\n", b) //type of b:[]int
+}
+还支持如下方式：
+c := a[1:] //[56 57 58 59]
+d := a[:4] //[55 56 57 58]
+e := a[:] //[55 56 57 58 59]
+```
+
+## 切片再切片
+
+除了基于数组得到切片，我们还可以通过切片来得到切片。
+
+```go
+func main() {
+//切片再切片
+a := [...]string{"北京", "上海", "广州", "深圳", "成都", "重庆"}
+fmt.Printf("a:%v type:%T len:%d cap:%d\n", a, a, len(a), cap(a))
+b := a[1:3]
+fmt.Printf("b:%v type:%T len:%d cap:%d\n", b, b, len(b), cap(b))
+c := b[1:5]
+fmt.Printf("c:%v type:%T len:%d cap:%d\n", c, c, len(c), cap(c))
+}
+
+```
+
+```go
+输出：
+a:[北京 上海 广州 深圳 成都 重庆] type:[6]string len:6 cap:6
+b:[上海 广州] type:[]string len:2 cap:5
+c:[广州 深圳 成都 重庆] type:[]string len:4 cap:4
+```
+
+**注意： 对切片进行再切片时，索引不能超过原数组的长度，否则会出现索引越界的错误。**
+
+## 关于切片的长度和容量
+
+切片拥有自己的长度和容量，我们可以通过使用内置的 **len()函数**求长度，使用内置的 **cap()函数**求切片的容量。
+切片的长度就是它所包含的元素个数。
+切片的容量是从它的第一个元素开始数，到其底层数组元素末尾的个数。
+切片 s 的长度和容量可通过表达式 len(s) 和 cap(s) 来获取。
+
+```go
+s := []int{2, 3, 5, 7, 11, 13}
+fmt.Println(s)
+fmt.Printf("长度:%v 容量 %v\n", len(s), cap(s))
+c := s[:2]
+fmt.Println(c)
+fmt.Printf("长度:%v 容量 %v\n", len(c), cap(c))
+d := s[1:3]
+fmt.Println(d)
+fmt.Printf("长度:%v 容量 %v", len(d), cap(d))
+
+```
+
+```go
+输出：
+D:\golang\src\demo01>go run main.go
+[2 3 5 7 11 13]
+长度:6 容量 6
+[2 3]
+长度:2 容量 6
+[3 5]
+长度:2 容量 5
+```
+
+# 结构体和 Json 相互转换 序列化反序列化 
+
+## 关于 JSON 数据
+
+JSON(JavaScript Object Notation) 是一种轻量级的数据交换格式。易于人阅读和编写。同时也
+易于机器解析和生成。RESTfull Api 接口中返回的数据都是 json 数据。
+Json 的基本格式如下：
+
+```go
+{
+"a": "Hello",
+"b": "World"
+}
+```
+
+稍微复杂点的 JSON
+
+```go
+{ 
+    "result": [{ 
+        "_id": "59f6ef443ce1fb0fb02c7a43", 
+        "title": "笔记本电脑",
+		"status": "1", 
+        "pic": "public\\upload\\UObZahqPYzFvx_C9CQjU8KiX.png", 
+        "url": "12"
+}, { 
+        "_id": "5a012efb93ec4d199c18d1b4", 
+        "title": "第二个轮播图", 
+        "status": "1", 
+        "pic": "public\\upload\\f3OtH11ZaPX5AA4Ov95Q7DEM.png"
+}, { 
+        "_id": "5a012f2433574208841e0820", 
+        "title": "第三个轮播图", 
+        "status": "1", 
+        "pic": "public\\upload\\s5ujmYBQVRcLuvBHvWFMJHzS.jpg"
+}, { 
+        "_id": "5a688a0ca6dcba0ff4861a3d", 
+        "title": "教程", 
+        "status": "1", 
+        "pic": "public\\upload\\Zh8EP9HOasV28ynDSp8TaGwd.png"
+}]
+}
+```
+
+## 结构体与 JSON 序列化
+
+比如我们 Golang 要给 App 或者小程序提供 Api 接口数据，这个时候就需要涉及到结构体和Json 之间的相互转换
+**Golang JSON 序列化**是指把结构体数据转化成 JSON 格式的字符**Golang JSON 的反序列化**
+是指把 JSON 数据转化成 Golang 中的结构体对象
+
+Golang 中 的 序 列 化 和 反 序 列 化 主 要 通 过 `"encoding/json"` 包 中 的 `json.Marshal()` 和`json.Unmarshal()`方法实现
+
+### 1、结构体对象转化成 Json 字符串
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+type Student struct {
+    ID int
+    Gender string
+    name string //私有属性不能被 json 包访问
+    Sno string
+}
+func main() {
+    var s1 = Student{
+        ID: 1, Gender: "男", Name: "李四", Sno: "s0001", }
+    fmt.Printf("%#v\n", s1)
+    var s, _ = json.Marshal(s1)
+    jsonStr := string(s)
+    fmt.Println(jsonStr)
+}
+```
+
+### 2、Json 字符串转换成结构体对象
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+type Student struct {
+    ID int
+    Gender string
+    Name string
+    Sno string
+}
+func main() {
+    var jsonStr = "{\"ID\":1,\"Gender\":\"男\",\"Name\":\"李四\",\"Sno\":\"s0001\"}" var jsonStr = `{"ID":1,"Gender":"男","Name":"李四","Sno":"s0001"}` //定义一个 Monster 实例
+    var student Student
+    err := json.Unmarshal([]byte(jsonStr), &student)
+    if err != nil {
+        fmt.Printf("unmarshal err=%v\n", err)
+    }
+    fmt.Printf("反序列化后 student=%#v student.Name=%v \n", student, student.Name)
+}
+```
+
+## 结构体标签 Tag
+
+Tag 是结构体的元信息，可以在运行的时候通过反射的机制读取出来。 Tag 在结构体字段的后方定义，由一对反引号包裹起来，具体的格式如下：
+
+```go
+\`key1:"value1" key2:"value2"\` 
+```
+
+结构体 **tag** 由一个或多个键值对组成。键与值使用冒号分隔，值用双引号括起来。同一个结构体字段可以设置多个键值对 **tag**，不同的键值对之间使用空格分隔。
+**注意事项： 为结构体编写 Tag 时，必须严格遵守键值对的规则。结构体标签的解析代码的容错能力很差，一旦格式写错，编译和运行时都不会提示任何错误，通过反射也无法正确取值。例如不要在 key 和 value 之间添加空格。**
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+type Student struct {
+    ID int `json:"id"` //通过指定 tag 实现 json 序列化该字段时的 key
+    Gender string `json:"gender"` Name string
+    Sno string
+}
+func main() {
+    var s1 = Student{
+        ID: 1, Gender: "男", Name: "李四", Sno: "s0001", }
+    fmt.Printf("%#v\n", s1)
+    var s, _ = json.Marshal(s1)
+    jsonStr := string(s)
+    fmt.Println(jsonStr)
+}
+```
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+type Student struct {
+    ID int `json:"id"` //通过指定 tag 实现 json 序列化该字段时的 key
+    Gender string `json:"gender"` Name string
+    Sno string
+}
+func main() {
+    var s2 Student
+    var str = "{\"id\":1,\"gender\":\"男\",\"Name\":\"李四\",\"Sno\":\"s0001\"}" err := json.Unmarshal([]byte(str), &s2)
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Printf("%#v", s2)
+}
+```
+
+## 嵌套结构体和 JSON 序列化反序列化
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+//Student 学生
+type Student struct {
+    ID int
+    Gender string
+    Name string
+}
+//Class 班级
+type Class struct {
+    Title string
+    Students []Student
+}
+func main() {
+    c := &Class{
+        Title: "001", Students: make([]Student, 0, 200), }
+    for i := 0; i < 10; i++ {
+        stu := Student{
+            Name: fmt.Sprintf("stu%02d", i), Gender: "男", ID: i, }
+        c.Students = append(c.Students, stu)
+    }
+    //JSON 序列化：结构体-->JSON 格式的字符串
+    data, err := json.Marshal(c)
+    if err != nil {
+        fmt.Println("json marshal failed")
+        return
+    }
+    fmt.Printf("json:%s\n", data)
+}
+```
+
+```go
+package main
+import ( "encoding/json"
+        "fmt"
+       )
+//Student 学生
+type Student struct {
+    ID int
+    Gender string
+    Name string
+}
+//Class 班级
+type Class struct {
+    Title string
+    Students []Student
+}
+func main() {
+    str := `{"Title":"001","Students":[{"ID":0,"Gender":" 男 ","Name":"stu00"},{"ID":1,"Gender":" 男 ","Name":"stu01"},{"ID":2,"Gender":" 男 ","Name":"stu02"},{"ID":3,"Gender":" 男
+","Name":"stu03"},{"ID":4,"Gender":" 男 ","Name":"stu04"},{"ID":5,"Gender":" 男
+","Name":"stu05"},{"ID":6,"Gender":" 男 ","Name":"stu06"},{"ID":7,"Gender":" 男
+","Name":"stu07"},{"ID":8,"Gender":" 男 ","Name":"stu08"},{"ID":9,"Gender":" 男
+","Name":"stu09"}]}` c1 := &Class{}
+    err := json.Unmarshal([]byte(str), c1)
+    if err != nil {
+        fmt.Println("json unmarshal failed!")
+        return
+    }
+    fmt.Printf("%#v\n", c1)
+}
+```
+
+# go mod 以及 Golang 包
+
+## 一、包的介绍和定义
+
+包（package）是多个 Go 源码的集合，是一种高级的代码复用方案，Go 语言为我们提供了
+很多内置包，如 fmt、strconv、strings、sort、errors、time、encoding/json、os、io 等。
+Golang 中的包可以分为三种：1、系统内置包 2、自定义包 3、第三方包
+**系统内置包**: Golang 语言给我们提供的内置包，引入后可以直接使用，如 fmt、strconv、strings、
+sort、errors、time、encoding/json、os、io 等。
+**自定义包**：开发者自己写的包
+**第三方包**：属于自定义包的一种，需要下载安装到本地后才可以使用，如前面给大家介绍的
+"github.com/shopspring/decimal"包解决 float 精度丢失问题。
+
+## 二、Golang 包管理工具 go mod
+
+在 Golang1.11 版本之前如果我们要自定义包的话必须把项目放在 GOPATH 目录。Go1.11 版
+本之后无需手动配置环境变量，使用 go mod 管理项目，也不需要非得把项目放到 GOPATH
+指定目录下，你可以在你磁盘的任何位置新建一个项目 , Go1.13 以后可以彻底不要 GOPATH
+
+### 1、go mod init 初始化项目
+
+实际项目开发中我们首先要在我们项目目录中用 go mod 命令生成一个 go.mod 文件管理我
+们项目的依赖。
+比如我们的 golang 项目文件要放在了 itying 这个文件夹，这个时候我们需要在 itying 文件夹
+里面使用 go mod 命令生成一个 go.mod 文件
+
+### 2、go mod 其他命令
+
+| 命令         | 功能                                                         |
+| ------------ | ------------------------------------------------------------ |
+| **download** | download modules to local cache (下载依赖的 module 到本地 cache)) |
+| **edit**     | edit go.mod from tools or scripts (编辑 go.mod 文件)         |
+| **graph**    | print module requirement graph (打印模块依赖图))             |
+| **init**     | initialize new module in current directory (再当前文件夹下初始化一个新的<br/>module, 创建 go.mod 文件)) |
+| **tidy**     | add missing and remove unused modules (增加丢失的 module，去掉未用的<br/>module) |
+| **vendor**   | make vendored copy of dependencies (将依赖复制到 vendor 下)  |
+| **verify**   | verify dependencies have expected content (校验依赖 检查下载的第三方库有没<br/>有本地修改，如果有修改，则会返回非 0，否则验证成功。) |
+| **why**      | explain why packages or modules are needed (解释为什么需要依赖) |
+
+## 三、Golang 中自定义包
+
+包（package）是多个 Go 源码的集合，一个包可以简单理解为一个存放多个.go 文件的文件夹。该文件夹下面的所有 go 文件都要在代码的第一行添加如下代码，声明该文件归属的包。package 包名
+
+注意事项：
+
+- 一个文件夹下面直接包含的文件只能归属一个 package，同样一个 package 的文件不能在多个文件夹下。
+- 包名可以不和文件夹的名字一样，包名不能包含 - 符号。
+- 包名为 main 的包为应用程序的入口包，这种包编译后会得到一个可执行文件，而编译不包含 main 包的源代码则不会得到可执行文件。
+
+### 1、定义一个包
+
+如果想在一个包中引用另外一个包里的标识符（如变量、常量、类型、函数等）时，该标识符必须是对外可见的（public）。在 Go 语中只需要将标识符的首字母大写就可以让标识符对外可见了。
+
+#### 1、定义一个包名为 calc 的包，代码如下：
+
+```go
+package calc
+//首字母大小表示公有，首字母小写表示私有
+var a = 100 //私有变量
+var Age = 20 //公有变量
+func Add(x, y int) int {
+    return x + y
+}
+func Sum(x, y int) int {
+    return x - y
+}
+```
+
+#### 2、main.go 中引入这个包
+
+访问一个包里面的公有属性方法的时候需要通过包名称.去访问
+
+```go
+package main
+import ( "fmt"
+        "itying/calc"
+       )
+func main() {
+    c := calc.Add(10, 20)
+    fmt.Println(c)
+}
+```
+
+
+
+### 2、导入一个包
+
+**单行导入**
+单行导入的格式如下：
+
+```go
+import "包 1"
+import "包 2"
+```
+
+**多行导入**
+多行导入的格式如下：
+
+```go
+import ( "包 1"
+"包 2"
+)
+```
+
+**匿名导入包**
+如果只希望导入包，而不使用包内部的数据时，可以使用匿名导入包。具体的格式如下：
+
+```go
+import _ "包的路径" 
+```
+
+匿名导入的包与其他方式导入的包一样都会被编译到可执行文件中。
+**自定义包名**
+在导入包名的时候，我们还可以为导入的包设置别名。通常用于导入的包名太长或者导入的包名冲突的情况。具体语法格式如下：
+
+```go
+import 别名 "包的路径" 
+```
+
+**单行引入定义别名：**
+
+```go
+import c "itying/calc" 
+```
+
+**多行引入定义别名：**
+
+```go
+import ( 
+    "fmt" 
+    c "itying/calc"//给calc这个包名起一个别名c
+)
+```
+
+## 四、Golang 中 init()初始化函数
+
+**init()函数介绍**
+在 Go 语言程序执行时导入包语句会自动触发包内部 init()函数的调用。需要注意的是：init()函数没有参数也没有返回值。 init()函数在程序运行时自动被调用执行，不能在代码中主动调用它。
+包初始化执行的顺序如下图所示：
+
+![Golang 中的 go mod 以及 Golang 包详解 Image[7]](assets/Golang 中的 go mod 以及 Golang 包详解 Image[7].jpg)
+
+**init()函数执行顺序**
+Go 语言包会从 main 包开始检查其导入的所有包，每个包中又可能导入了其他的包。Go 编译器由此构建出一个树状的包引用关系，再根据引用顺序决定编译顺序，依次编译这些包的代码。
+
+在运行时，被最后导入的包会最先初始化并调用其 init()函数， 如下图示：
+
+![Golang 中的 go mod 以及 Golang 包详解 Image[8]](assets/Golang 中的 go mod 以及 Golang 包详解 Image[8].jpg)
+
+## 五、Golang 中使用第三方包
+
+我们可以在 https://pkg.go.dev/ 查找看常见的 golang 第三方包
+
+### 1、初始化项目
+
+```go
+go mod init 项目名
+```
+
+### 2、下载安装这个包（非必须）
+
+比如前面给大家演示的解决 float 精度损失的包 decimal
+https://github.com/shopspring/decimal
+提示：此命令需要 cd 到项目里面执行
+
+```go
+go get github.com/shopspring/decimal
+```
+
+### 3、看文档使用这个包
+
+包安装完毕后我们就可以看文档使用这个包了，引入包以后可以使用 go mod tidy 增加丢失的 module 去掉未用的 module
+
+### 4、go mod tidy 下载丢失的包
+
+go mod tidy 增加丢失的 module 去掉未用的 module （推荐）
+
+```go
+go mod tidy
+```
+
+# Golang 中的接口
+
+## 一、接口的介绍
+
+### 1、现实生活中的接口
+
+现实生活中手机、相机、U 盘都可以和电脑的 USB 接口建立连接。我们不需要关注 usb 卡槽
+大小是否一样，因为所有的 USB 接口都是按照统一的标准来设计的。
+
+### 2、Golang 中的接口（interface）
+
+Golang 中的接口是一种抽象数据类型，Golang 中接口定义了对象的行为规范，只定义规范不实现。接口中定义的规范由具体的对象来实现。
+通俗的讲接口就一个标准，它是对一个对象的行为和规范进行约定，约定实现接口的对象必须得按照接口的规范。
+
+*Go 语言中的接口（Interface）在概念和用途上，最类似于 C++ 中的**纯虚基类（Pure Virtual Base Class）**，也就是**抽象基类（Abstract Base Class）**。*
+
+*当你想在 Go 中使用接口来设计架构时，你可以把它当成 C++ 里**没有数据成员、且不需要显式继承的纯虚基类**来理解。*
+
+## 二、Golang 接口的定义
+
+在 Golang 中接口（interface）是一种类型，一种抽象的类型。接口（interface）是一组函数 method 的集合，Golang 中的接口不能包含任何变量。
+在 Golang 中接口中的所有方法都没有方法体，接口定义了一个对象的行为规范，只定义规范不实现。接口体现了程序设计的多态和高内聚低耦合的思想
+Golang 中的接口也是一种数据类型，不需要显示实现。只需要一个变量含有接口类型中的所有方法，那么这个变量就实现了这个接口。
+Golang 中每个接口由数个方法组成，接口的定义格式如下：
+
+```go
+type 接口名 interface{
+    方法名 1( 参数列表 1 ) 返回值列表 1
+    方法名 2( 参数列表 2 ) 返回值列表 2 …
+}
+```
+
+其中：
+
+- 接口名：使用 type 将接口定义为自定义的类型名。Go 语言的接口在命名时，一般会在单词后面添加 er，如有写操作的接口叫 Writer，有字符串功能的接口叫 Stringer 等。接口名最好要能突出该接口的类型含义。
+- 方法名：当方法名首字母是大写且这个接口类型名首字母也是大写时，这个方法可以被接口所在的包（package）之外的代码访问。
+- 参数列表、返回值列表：参数列表和返回值列表中的参数变量名可以省略。
+
+演示：定义一个 Usber 接口让 Phone 和 Camera 结构体实现这个接口
+
+```go
+package main
+import "fmt"
+type Usber interface {
+    Start()
+    Stop()
+}
+type Phone struct {
+    Name string
+}
+func (p Phone) Start() {
+    fmt.Println(p.Name, "开始工作")
+}
+func (p Phone) Stop() {
+    fmt.Println("phone 停止")
+}
+type Camera struct {
+}
+func (c Camera) Start() {
+    fmt.Println("相机 开始工作")
+}
+func (c Camera) Stop() {
+    fmt.Println("相机 停止工作")
+}
+func main() {
+    phone := Phone{
+        Name: "小米手机", }
+    var p Usber = phone //phone 实现了 Usb 接口
+    p.Start()
+    camera := Camera{}
+    var c Usber = camera //camera 实现了 Usb 接口
+    c.Start()
+}
+```
+
+演示：Computer 结构体中的 Work 方法必须传入一个 Usb 的接口
+
+```go
+package main
+import "fmt"
+type Usber interface {
+    Start()
+    Stop()
+}
+type Phone struct {
+    Name string
+}
+func (p Phone) Start() {
+    fmt.Println(p.Name, "开始工作")
+}
+func (p Phone) Stop() {
+    fmt.Println("phone 停止")
+}
+type Camera struct {
+}
+func (c Camera) Start() {
+    fmt.Println("相机 开始工作")
+}
+func (c Camera) Stop() {
+    fmt.Println("相机 停止工作")
+}
+//电脑的结构体
+type Computer struct {
+    Name string
+}
+// 电脑的 Work 方法要求必须传入 Usb 接口类型数据
+func (c Computer) Work(usb Usber) {
+    usb.Start()
+    usb.Stop()
+}
+func main() {
+    phone := Phone{
+        Name: "小米手机", }
+    camera := Camera{}
+    computer := Computer{}
+    //把手机插入电脑的 Usb 接口开始工作
+    computer.Work(phone)
+    //把相机插入电脑的 Usb 接口开始工作
+    computer.Work(camera)
+}
+```
+
