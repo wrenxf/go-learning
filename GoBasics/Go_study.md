@@ -532,14 +532,14 @@ import (
 在 Go 语言程序执行时导入包语句会自动触发包内部 init()函数的调用。需要注意的是：init()函数没有参数也没有返回值。 init()函数在程序运行时自动被调用执行，不能在代码中主动调用它。
 包初始化执行的顺序如下图所示：
 
-![Golang 中的 go mod 以及 Golang 包详解 Image[7]](assets/Golang 中的 go mod 以及 Golang 包详解 Image[7].jpg)
+![image1](assets/image1.jpg)
 
 **init()函数执行顺序**
 Go 语言包会从 main 包开始检查其导入的所有包，每个包中又可能导入了其他的包。Go 编译器由此构建出一个树状的包引用关系，再根据引用顺序决定编译顺序，依次编译这些包的代码。
 
 在运行时，被最后导入的包会最先初始化并调用其 init()函数， 如下图示：
 
-![Golang 中的 go mod 以及 Golang 包详解 Image[8]](assets/Golang 中的 go mod 以及 Golang 包详解 Image[8].jpg)
+![image2](assets/image2.jpg)
 
 ## 五、Golang 中使用第三方包
 
