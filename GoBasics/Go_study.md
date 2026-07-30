@@ -695,3 +695,356 @@ func main() {
 }
 ```
 
+## 三、空接口
+
+Golang 中的接口可以不定义任何方法，没有定义任何方法的接口就是空接口。空接口表示没有任何约束，因此任何类型变量都可以实现空接口。
+空接口在实际项目中用的是非常多的，用空接口可以表示任意数据类型。
+案例：
+
+```go
+func main() {
+    // 定义一个空接口 x, x 变量可以接收任意的数据类型
+    var x interface{}
+    s := "你好 golang" x = s
+    fmt.Printf("type:%T value:%v\n", x, x)
+    i := 100
+    x = i
+    fmt.Printf("type:%T value:%v\n", x, x)
+    b := true
+    x = b
+    fmt.Printf("type:%T value:%v\n", x, x)
+}
+```
+
+### 1、空接口作为函数的参数
+
+使用空接口实现可以接收任意类型的函数参数。
+
+```go
+// 空接口作为函数参数
+func show(a interface{}) {
+    fmt.Printf("type:%T value:%v\n", a, a)
+}
+```
+
+### 2、map 的值实现空接口
+
+使用空接口实现可以保存任意值的字典。
+
+```go
+// 空接口作为 map 值
+var studentInfo = make(map[string]interface{})
+studentInfo["name"] = "张三"
+studentInfo["age"] = 18
+studentInfo["married"] = false
+fmt.Println(studentInfo)
+```
+
+### 3、切片实现空接口
+
+```go
+var slice = []interface{}{"张三", 20, true, 32.2}
+fmt.Println(slice)
+```
+
+## 四、类型断言
+
+一个接口的值（简称接口值）是由一个具体类型和具体类型的值两部分组成的。这两部分分别称为接口的动态类型和动态值。
+
+如果我们想要判断空接口中值的类型，那么这个时候就可以使用类型断言，其语法格式：
+
+```go
+x.(T)
+```
+
+其中：
+
+- x : 表示类型为 interface{}的变量
+- T : 表示断言 x 可能是的类型。
+
+该语法返回两个参数，第一个参数是 x 转化为 T 类型后的变量，第二个值是一个布尔值，若为 true 则表示断言成功，为 false 则表示断言失败。
+举个例子：
+
+```go
+func main() {
+    var x interface{}
+    x = "Hello golnag" 
+    v, ok := x.(string)
+    if ok {
+        fmt.Println(v)
+    } else {
+        fmt.Println("类型断言失败")
+    }
+}
+```
+
+上面的示例中如果要断言多次就需要写多个 if 判断，这个时候我们可以使用 switch 语句来
+实现：
+**注意：类型.(type)只能结合 switch 语句使用**
+
+```go
+func justifyType(x interface{}) {
+    switch v := x.(type) {
+        case string:
+        fmt.Printf("x is a string，value is %v\n", v)
+        case int:
+        fmt.Printf("x is a int is %v\n", v)
+        case bool:
+        fmt.Printf("x is a bool is %v\n", v)
+        default:
+        fmt.Println("unsupport type！")
+    }
+}
+```
+
+因为空接口可以存储任意类型值的特点，所以空接口在 Go 语言中的使用十分广泛。
+
+**关于接口需要注意的是**：只有当有两个或两个以上的具体类型必须以相同的方式进行处理时
+才需要定义接口。不要为了接口而写接口，那样只会增加不必要的抽象，导致不必要的运行
+时损耗。
+
+## 五、结构体值接收者和指针接收者实现接口的区别
+
+值接收者：
+如果结构体中的方法是值接收者，那么实例化后的结构体值类型和结构体指针类型都可以赋值给接口变量
+
+```go
+package main
+import "fmt"
+type Usb interface {
+    Start()
+    Stop()
+}
+type Phone struct {
+    Name string
+}
+func (p Phone) Start() {
+    fmt.Println(p.Name, "开始工作")
+}
+func (p Phone) Stop() {
+    fmt.Println("phone 停止")
+}
+func main() {
+    phone1 := Phone{
+        Name: "小米手机", }
+    var p1 Usb = phone1 //phone1 实现了 Usb 接口 phone1 是 Phone 类型
+    p1.Start() //小米手机 开始工作
+    phone2 := &Phone{
+        Name: "苹果手机", }
+    var p2 Usb = phone2 //phone2 实现了 Usb 接口 phone2 是 *Phone 类型
+    p2.Start() //苹果手机 开始工作
+}
+```
+
+指针接收者：
+如果结构体中的方法是指针接收者，那么实例化后结构体指针类型都可以赋值给接口变量，结构体值类型没法赋值给接口变量。
+
+```go
+package main
+import "fmt"
+type Usb interface {
+    Start()
+    Stop()
+}
+type Phone struct {
+    Name string
+}
+func (p *Phone) Start() {
+    fmt.Println(p.Name, "开始工作")
+}
+func (p *Phone) Stop() {
+    fmt.Println("phone 停止")
+}
+func main() {
+    /* 错误写法
+phone1 := Phone{
+Name: "小米手机", }
+var p1 Usb = phone1
+p1.Start() */
+    //正确写法
+    phone2 := &Phone{
+        Name: "苹果手机", }
+    var p2 Usb = phone2 //phone2 实现了 Usb 接口 phone2 是 *Phone 类型
+    p2.Start() //苹果手机 开始工作
+}
+```
+
+### **各自的作用与适用场景**
+
+#### **值接收者的作用：**
+
+1. **不可变数据（只读操作）**：当你不需要在方法内部修改结构体的字段时，使用值接收者。这保证了调用方法时，原始数据绝对不会被意外篡改。
+2. **轻量级结构体**：如果结构体非常小（例如只有几个 `int` 或 `bool` 字段），值拷贝的开销极低，使用值接收者可以避免指针间接寻址带来的微小性能损耗。
+3. **并发安全**：因为每次调用都是数据的副本，天然避免了多个协程同时调用该方法时产生的数据竞争问题。
+
+#### **指针接收者的作用：**
+
+1. **修改内部状态**：这是最常见的作用。当你需要在方法内部修改结构体的字段时（例如 `SetAge()`、`AddItem()`），必须使用指针接收者，否则修改的只是副本，原对象不会发生变化。
+2. **避免大对象拷贝**：如果结构体包含大型切片、Map 或长字符串，值拷贝会导致显著的内存分配和性能下降。使用指针接收者只传递 8 字节的内存地址，极其高效。
+3. **保持单例/状态一致性**：在实现并发控制（如配合 `sync.Mutex` 使用）时，必须使用指针接收者，以确保所有操作都作用于同一个锁和同一份数据上。
+
+### **💡 最佳实践建议**
+
+在实际开发中，Go 官方社区有一个不成文的共识：
+
+- 如果不确定用哪个，或者结构体稍大，**默认优先使用指针接收者**。
+- 只有当你明确知道该方法不需要修改数据，且结构体非常小（如 `time.Time`、坐标点 `Point`）时，才使用值接收者。
+- **保持一致性**：同一个结构体，尽量要么全用值接收者，要么全用指针接收者，不要混用，以免让调用者感到困惑。
+
+## 六、一个结构体实现多个接口
+
+Golang 中一个结构体也可以实现多个接口
+
+```go
+package main
+import "fmt"
+type AInterface interface {
+    GetInfo() string
+}
+type BInterface interface {
+    SetInfo(string, int)
+}
+type People struct {
+    Name string
+    Age int
+}
+func (p People) GetInfo() string {
+    return fmt.Sprintf("姓名:%v 年龄:%d", p.Name, p.Age)
+}
+func (p *People) SetInfo(name string, age int) {
+    p.Name = name
+    p.Age = age
+}
+func main() {
+    var people = &People{
+        Name: "张三", 
+        Age: 20, 
+    }
+    // people 实现了 AInterface 和 BInterface
+    var p1 AInterface = people
+    var p2 BInterface = people
+    
+    fmt.Println(p1.GetInfo())
+    p2.SetInfo("李四", 30)
+    fmt.Println(p1.GetInfo())
+}
+```
+
+## 七、接口嵌套
+
+接口与接口间可以通过嵌套创造出新的接口。
+
+```go
+package main
+import "fmt"
+type SayInterface interface {
+    say()
+}
+type MoveInterface interface {
+    move()
+}
+// 接口嵌套
+type Animal interface {
+    SayInterface
+    MoveInterface
+}
+type Cat struct {
+    name string
+}
+func (c Cat) say() {
+    fmt.Println("喵喵喵")
+}
+func (c Cat) move() {
+    fmt.Println("猫会动")
+}
+func main() {
+    var x Animal
+    x = Cat{name: "花花"}
+    x.move()
+    x.say()
+}
+```
+
+## map[string]interface{} 无法直接访问内部数据的解决方案
+
+在 Go 语言中，当你将切片或结构体存入 `map[string]interface{}` 后，取出的值类型是 `interface{}`。由于 `interface{}` 本身不支持索引操作（如 `[0]`）或点号语法（如 `.Name`），因此无法直接访问其内部的具体值。
+
+要解决这个问题，核心思路是进行**类型断言（Type Assertion）**，将 `interface{}` “还原”为具体的切片或结构体类型。以下是针对切片和结构体的具体解决方案：
+
+### **1. 解决切片不能按索引访问的问题**
+
+当你从 map 中取出一个切片时，必须先将其断言为对应的切片类型（例如 `[]string` 或 `[]interface{}`），然后才能使用 `[0]` 这样的索引操作。
+
+**示例代码：**
+
+```go
+// 假设 map 中存了一个字符串切片
+data := map[string]interface{}{
+    "tags": []string{"Go", "Backend"},
+}
+
+// ❌ 错误写法：直接索引会导致编译错误 (invalid operation)
+// tag := data["tags"][0] 
+
+// ✅ 正确写法：先进行类型断言
+if tags, ok := data["tags"].([]string); ok {
+    fmt.Println("第一个标签:", tags[0]) // 输出: Go
+}
+```
+
+### **2. 解决结构体不能按字段访问的问题**
+
+当你从 map 中取出一个结构体时，必须将其断言为该结构体的具体类型，之后才能使用点号（`.`）访问其字段。
+
+**示例代码：**
+
+go
+
+
+
+```go
+type User struct {
+    Name string
+    Age  int
+}
+
+// 假设 map 中存了一个 User 结构体
+data := map[string]interface{}{
+    "user": User{Name: "张三", Age: 25},
+}
+
+// ❌ 错误写法：直接访问字段会导致编译错误
+// name := data["user"].Name 
+
+// ✅ 正确写法：先进行类型断言
+if user, ok := data["user"].(User); ok {
+    fmt.Println("姓名:", user.Name) // 输出: 张三
+}
+```
+
+# Golang goroutine channel 实现并发和并行
+
+## 一、为什么要使用 goroutine
+
+需求：要统计 1-10000000 的数字中那些是素数，并打印这些素数？
+素数：就是除了 1 和它本身不能被其他数整除的数
+实现方法：
+1、传统方法，通过一个 for 循环判断各个数是不是素数
+2、使用并发或者并行的方式，将统计素数的任务分配给多个 goroutine 去完成，这个时候就用到了 goroutine
+3、goroutine 结合 channel
+
+## 二、进程、线程以及并行、并发
+
+### 1、关于进程和线程
+
+**进程（Process）**就是程序在操作系统中的一次执行过程，是系统进行资源分配和调度的基本单位，进程是一个动态概念，是程序在执行过程中分配和管理资源的基本单位，每一个进程都有一个自己的地址空间。一个进程至少有 5 种基本状态，它们是：初始态，执行态，等待状态，就绪状态，终止状态。
+
+通俗的讲进程就是一个正在执行的程序。
+
+**线程** 是进程的一个执行实例，是程序执行的最小单元，它是比进程更小的能独立运行的基本单位
+
+一个进程可以创建多个线程，同一个进程中的多个线程可以并发执行，一个程序要运行的话至少有一个进程。
+
+![image3](assets/image3.jpg)
+
+<img src="assets/image4.jpg" alt="image4" style="zoom:67%;" />
