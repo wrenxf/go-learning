@@ -1048,3 +1048,15 @@ if user, ok := data["user"].(User); ok {
 ![image3](assets/image3.jpg)
 
 <img src="assets/image4.jpg" alt="image4" style="zoom:67%;" />
+
+### 2、关于并行和并发
+
+**并发：**多个线程同时竞争一个位置，竞争到的才可以执行，每一个时间段只有一个线程在执行。
+
+**并行：**多个线程可以同时执行，每一个时间段，可以有多个线程同时执行。
+
+**通俗的讲**多线程程序在单核 CPU 上面运行就是**并发**，多线程程序在多核 CPU上运行就是**并行**，如果线程数大于 CPU 核数，则多线程程序在多个 CPU 上面运行既有并行又有并发
+
+![image5](assets/image5.jpg)
+
+![image6](assets/image6.jpg)
