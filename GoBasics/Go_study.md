@@ -1060,3 +1060,204 @@ if user, ok := data["user"].(User); ok {
 ![image5](assets/image5.jpg)
 
 ![image6](assets/image6.jpg)
+
+## 三、Golang 中的协程（goroutine）以及主线程
+
+**golang 中的主线程：**（可以理解为线程/也可以理解为进程），在一个 Golang 程序的主线程上可以起**多个协程**。**Golang 中多协程**可以实现并行或者并发。
+
+**协程：**可以理解为用户级线程，这是对内核透明的，也就是系统并不知道有协程的存在，是完全由用户自己的程序进行调度的。Golang 的一大特色就是从语言层面原生支持协程，在函数或者方法前面加 go 关键字就可创建一个协程。可以说 Golang 中的协程就是goroutine 。
+
+![image7](assets/image7.jpg)
+
+Golang 中的多**协程**有点类似其他语言中的多线程。
+
+**多协程和多线程：**Golang 中每个 goroutine (协程) 默认占用内存远比 Java 、C 的线程少。OS 线程（操作系统线程）一般都有固定的栈内存（通常为 2MB 左右）,一个 goroutine (协程) 占用内存非常小，只有 2KB 左右，多协程 goroutine 切换调度开销方面远比线程要少。
+这也是为什么越来越多的大公司使用 Golang 的原因之一
+
+## 四、Goroutine 的使用以及 sync.WaitGroup
+
+**并行执行需求：**
+在主线程(可以理解成进程)中，开启一个 goroutine, 该协程每隔 50 毫秒秒输出 "你好 golang" 在主线程中也每隔 50 毫秒输出"你好 golang", 输出 10 次后，退出程序，要求主线程和goroutine 同时执行。
+
+```go
+package main
+import ( "fmt"
+        "strconv"
+        "time"
+       )
+func test() {
+    for i := 1; i <= 10; i++ {
+        fmt.Println("tesst () hello,world " + strconv.Itoa(i))
+        time.Sleep(time.Second)
+    }
+}
+func main() {
+    go test() // 开启了一个协程
+    for i := 1; i <= 10; i++ {
+        fmt.Println(" main() hello,golang" + strconv.Itoa(i))
+        time.Sleep(time.Second)
+    }
+}
+```
+
+上面代码看上去没有问题，但是要注意主线程执行完毕后即使协程没有执行完毕，程序也会退出，所以我们需要对上面代码进行改造。
+
+![image8](assets/image8.jpg)
+
+sync.WaitGroup 可以实现主线程等待协程执行完毕。
+
+```go
+package main
+import ( "fmt"
+        "strconv"
+        "sync"
+        "time"
+       )
+var wg sync.WaitGroup //1、定义全局的 WaitGroup
+func test() {
+    for i := 1; i <= 10; i++ {
+        fmt.Println("test () 你好 golang " + strconv.Itoa(i))
+        time.Sleep(time.Millisecond * 50)
+    }
+    wg.Done() // 4、goroutine 结束就登记-1
+}
+func main() {
+    wg.Add(1) //2、启动一个 goroutine 就登记+1
+    go test()
+    for i := 1; i <= 2; i++ {
+        fmt.Println(" main() 你好 golang" + strconv.Itoa(i))
+        time.Sleep(time.Millisecond * 50)
+    }
+    wg.Wait() // 3、等待所有登记的 goroutine 都结束
+}
+```
+
+## 五、启动多个 Goroutine
+
+在 Go 语言中实现并发就是这样简单，我们还可以启动多个 goroutine。让我们再来一个例子：
+（这里使用了 sync.WaitGroup 来实现等待 goroutine 执行完毕）
+
+```go
+var wg sync.WaitGroup
+func hello(i int) {
+    defer wg.Done() // goroutine 结束就登记-1
+    fmt.Println("Hello Goroutine!", i)
+}
+func main() {
+    for i := 0; i < 10; i++ {
+        wg.Add(1) // 启动一个 goroutine 就登记+1
+        go hello(i)
+    }
+    wg.Wait() // 等待所有登记的 goroutine 都结束
+}
+```
+
+多次执行上面的代码，会发现每次打印的数字的顺序都不一致。这是因为 10 个 goroutine是并发执行的，而 goroutine 的调度是随机的。
+
+## 六、设置 Golang 并行运行的时候占用的 cup 数量
+
+Go 运行时的调度器使用 GOMAXPROCS 参数来确定需要使用多少个 OS 线程来同时执行 Go代码。默认值是机器上的 CPU 核心数。例如在一个 8 核心的机器上，调度器会把 Go 代码同时调度到 8 个 OS 线程上。
+
+Go 语言中可以通过 runtime.GOMAXPROCS()函数设置当前程序并发时占用的 CPU 逻辑核心数。
+
+Go1.5 版本之前，默认使用的是单核心执行。Go1.5 版本之后，默认使用全部的 CPU 逻辑核心数。
+
+```go
+package main
+import ( "fmt"
+        "runtime"
+       )
+func main() {
+    //获取当前计算机上面的 Cup 个数
+    cpuNum := runtime.NumCPU()
+    fmt.Println("cpuNum=", cpuNum)
+    //可以自己设置使用多个 cpu
+    runtime.GOMAXPROCS(cpuNum - 1)
+    fmt.Println("ok")
+}
+```
+
+## 七、Goroutine 统计素数
+
+需求：要统计 1-120000 的数字中那些是素数？
+
+### 1、通过传统的 for 循环来统计
+
+```go
+func main() {
+	start := time.Now()
+	for num := 1; num <= 120000; num++ {
+		flag := true //假设是素数
+		for i := 2; i < num; i++ {
+			if num%i == 0 { //说明该 num 不是素数
+				flag = false
+				break
+			}
+		}
+		if flag {
+			// fmt.Println(num)
+		}
+	}
+	end := time.Now().Sub(start)
+	fmt.Println("普通的方法耗时=", end)
+}
+```
+
+![image9](assets/image9.png)
+
+### 2、goroutine 开启多个协程统计
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+//需求：要统计 1-120000 的数字中那些是素数？
+/*
+1协程统计 1-30000
+2 协程统计30001-60000
+3协程统计60001-90000
+4协程统计90001-120000
+*/
+
+var wg sync.WaitGroup
+
+func test(n int) {
+    defer wg.Done()
+    for num := (n-1)*30000 + 1; num < n*30000; num++ {
+        if num > 1 {
+            var flag = true
+            for i := 2; i < num; i++ {
+                if num%i == 0 {
+                    flag = false
+                    break
+                }
+            }
+            if flag {
+                //fmt.Println(num, "是素数")
+            }
+        }
+
+    }
+}
+
+func main() {
+    start := time.Now()
+    for i := 1; i <= 4; i++ {
+        wg.Add(1)
+        go test(i)
+    }
+    wg.Wait()
+    end := time.Now().Sub(start)
+    fmt.Println(end)
+}
+
+```
+
+![image10](assets/image10.png)
+
+问题：上面我们使用了 goroutine 已经能大大的提升新能了，但是如果我们想统计数据和打印数据同时进行，这个时候如何实现呢，这个时候我们就可以使用管道。
