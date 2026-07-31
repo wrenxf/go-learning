@@ -33,3 +33,7 @@
 # 学习笔记
 
 [1.Go语言基础](./GoBasics/Go_study.md)
+
+[2.MySQL](./MySQL.md)
+
+[3.Gin框架](./gin_study/Gin_study.md)
