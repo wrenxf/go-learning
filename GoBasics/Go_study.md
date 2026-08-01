@@ -1261,3 +1261,181 @@ func main() {
 ![image10](assets/image10.png)
 
 问题：上面我们使用了 goroutine 已经能大大的提升新能了，但是如果我们想统计数据和打印数据同时进行，这个时候如何实现呢，这个时候我们就可以使用管道。
+
+## 八、Channel 管道
+
+管道是 Golang 在语言级别上提供的 goroutine 间的通讯方式，我们可以使用 channel 在多个 goroutine 之间传递消息。如果说 goroutine 是 Go 程序并发的执行体，channel 就是它们之间的连接。channel 是可以让一个 goroutine 发送特定值到另一个 goroutine 的通信机制。
+
+Golang 的并发模型是 CSP（Communicating Sequential Processes），提倡**通过通信共享内存**而不是**通过共享内存而实现通信。**
+
+Go 语言中的管道（channel）是一种特殊的类型。管道像一个传送带或者队列，总是遵循**先入先出（First In First Out）**的规则，保证收发数据的顺序。每一个管道都是一个具体类型的导管，也就是声明 channel 的时候需要为其指定元素类型。
+
+### 1、channel 类型
+
+channel 是一种类型，一种引用类型。声明管道类型的格式如下：
+
+```go
+var 变量 chan 元素类型
+举几个例子：
+var ch1 chan int // 声明一个传递整型的管道
+var ch2 chan bool // 声明一个传递布尔型的管道
+var ch3 chan []int // 声明一个传递 int 切片的管道
+```
+
+### 2、创建 channel
+
+声明的管道后需要使用 make 函数初始化之后才能使用。
+**创建 channel 的格式如下：**
+
+```go
+make(chan 元素类型, 容量)
+```
+
+举几个例子：
+
+```go
+//创建一个能存储 10 个 int 类型数据的管道
+ch1 := make(chan int, 10)
+//创建一个能存储 4 个 bool 类型数据的管道
+ch2 := make(chan bool, 4)
+//创建一个能存储 3 个[]int 切片类型数据的管道
+ch3 := make(chan []int, 3)
+```
+
+### 3、channel 操作
+
+管道有发送（send）、接收(receive）和关闭（close）三种操作。
+发送和接收都使用<-符号。
+现在我们先使用以下语句定义一个管道：
+
+```go
+ch := make(chan int, 3)
+```
+
+#### 1、发送（将数据放在管道内）
+
+将一个值发送到管道中。
+
+```go
+ch <- 10 // 把 10 发送到 ch 中
+```
+
+#### 2、接收（从管道内取值）
+
+从一个管道中接收值。
+
+```go
+x := <- ch // 从 ch 中接收值并赋值给变量 x
+<-ch // 从 ch 中接收值，忽略结果
+```
+
+#### 3、关闭管道
+
+我们通过调用内置的 close 函数来关闭管道。
+
+```go
+close(ch)
+```
+
+关于关闭管道需要注意的事情是，只有在通知接收方 goroutine 所有的数据都发送完毕的时候才需要关闭管道。管道是可以被垃圾回收机制回收的，它和关闭文件是不一样的，在结束操作之后关闭文件是必须要做的，但关闭管道不是必须的。
+
+**关闭后的管道有以下特点：**
+
+1. 对一个关闭的管道再发送值就会导致 panic。
+2. 对一个关闭的管道进行接收会一直获取值直到管道为空。
+3. 对一个关闭的并且没有值的管道执行接收操作会得到对应类型的零值。
+4. 关闭一个已经关闭的管道会导致 panic。
+
+### 4、管道阻塞
+
+#### 1、无缓冲的管道：
+
+如果创建管道的时候没有指定容量，那么我们可以叫这个管道为无缓冲的管道
+无缓冲的管道又称为阻塞的管道。我们来看一下下面的代码：
+
+```go
+func main() {
+    ch := make(chan int)
+    ch <- 10
+    fmt.Println("发送成功")
+}
+```
+
+上面这段代码能够通过编译，但是执行的时候会出现以下错误：
+
+```go
+fatal error: all goroutines are asleep - deadlock!
+goroutine 1 [chan send]:
+main.main()
+D:/go_demo/demo21/07goroutine/main.go:10 +0x5b
+exit status 2
+```
+
+#### 2、有缓冲的管道：
+
+解决上面问题的方法还有一种就是使用有缓冲区的管道。我们可以在使用 make 函数初始化
+管道的时候为其指定管道的容量，例如：
+
+```go
+func main() {
+    ch := make(chan int, 1) // 创建一个容量为 1 的有缓冲区管道
+    ch <- 10
+    fmt.Println("发送成功")
+}
+```
+
+只要管道的容量大于零，那么该管道就是有缓冲的管道，管道的容量表示管道中能存放元素的数量。就像你小区的快递柜只有那么个多格子，格子满了就装不下了，就阻塞了，等到别人取走一个快递员就能往里面放一个。
+
+**管道阻塞具体代码如下：**
+
+```go
+func main() {
+    ch := make(chan int, 1)
+    ch <- 10
+    ch <- 12
+    fmt.Println("发送成功")
+}
+```
+
+**解决办法：**
+
+```go
+func main() {
+    ch := make(chan int, 1)
+    ch <- 10 //放进去
+    <-ch //取走
+    ch <- 12 //放进去
+    <-ch //取走
+    ch <- 17 //还可以放进去
+    fmt.Println("发送成功")
+}
+```
+
+### 5、for range 从管道循环取值
+
+当向管道中发送完数据时，我们可以通过 close 函数来关闭管道。
+
+当管道被关闭时，再往该管道发送值会引发 panic，从该管道取值的操作会先取完管道中的值，再然后取到的值一直都是对应类型的零值。那如何判断一个管道是否被关闭了呢？
+
+我们来看下面这个例子：
+
+```go
+package main
+import "fmt"
+//循环遍历管道数据
+func main() {
+    var ch1 = make(chan int, 5)
+    for i := 0; i < 5; i++ {
+        ch1 <- i + 1
+    }
+    close(ch1) //关闭管道
+    //使用 for range 遍历管道，当管道被关闭的时候就会退出 for range,如果没有关闭管道
+    就会报个错误 fatal error: all goroutines are asleep - deadlock!
+    //通过 for range 来遍历管道数据 管道没有 key
+    for val := range ch1 {
+        fmt.Println(val)
+    }
+}
+```
+
+从上面的例子中我们看到有两种方式在接收值的时候判断该管道是否被关闭，不过我们通常使用的是 for range 的方式。使用 for range 遍历管道，当管道被关闭的时候就会退出 for range。
