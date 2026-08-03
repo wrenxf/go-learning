@@ -31,7 +31,7 @@ func main() {
 	}*/
 	//fmt.Println(c)
 	/*结构体对象转json字符串*/
-	/*strByte, _ := json.Marshal(c)
+	/*strByte, _ := json01.Marshal(c)
 	strJson := string(strByte)
 	fmt.Println(strJson)*/
 	/*json字符串转结构体对象*/

@@ -237,7 +237,7 @@ import ( "encoding/json"
 type Student struct {
     ID int
     Gender string
-    name string //私有属性不能被 json 包访问
+    name string //私有属性不能被 json01 包访问
     Sno string
 }
 func main() {
@@ -291,8 +291,8 @@ import ( "encoding/json"
         "fmt"
        )
 type Student struct {
-    ID int `json:"id"` //通过指定 tag 实现 json 序列化该字段时的 key
-    Gender string `json:"gender"` Name string
+    ID int `json01:"id"` //通过指定 tag 实现 json01 序列化该字段时的 key
+    Gender string `json01:"gender"` Name string
     Sno string
 }
 func main() {
@@ -311,8 +311,8 @@ import ( "encoding/json"
         "fmt"
        )
 type Student struct {
-    ID int `json:"id"` //通过指定 tag 实现 json 序列化该字段时的 key
-    Gender string `json:"gender"` Name string
+    ID int `json01:"id"` //通过指定 tag 实现 json01 序列化该字段时的 key
+    Gender string `json01:"gender"` Name string
     Sno string
 }
 func main() {
@@ -354,10 +354,10 @@ func main() {
     //JSON 序列化：结构体-->JSON 格式的字符串
     data, err := json.Marshal(c)
     if err != nil {
-        fmt.Println("json marshal failed")
+        fmt.Println("json01 marshal failed")
         return
     }
-    fmt.Printf("json:%s\n", data)
+    fmt.Printf("json01:%s\n", data)
 }
 ```
 
@@ -385,7 +385,7 @@ func main() {
 ","Name":"stu09"}]}` c1 := &Class{}
     err := json.Unmarshal([]byte(str), c1)
     if err != nil {
-        fmt.Println("json unmarshal failed!")
+        fmt.Println("json01 unmarshal failed!")
         return
     }
     fmt.Printf("%#v\n", c1)
@@ -1272,7 +1272,7 @@ Go 语言中的管道（channel）是一种特殊的类型。管道像一个传�
 
 ### 1、channel 类型
 
-channel 是一种类型，一种引用类型。声明管道类型的格式如下：
+channel 是一种类型，一种`引用类型`。声明管道类型的格式如下：
 
 ```go
 var 变量 chan 元素类型
@@ -1440,6 +1440,17 @@ func main() {
 
 从上面的例子中我们看到有两种方式在接收值的时候判断该管道是否被关闭，不过我们通常使用的是 for range 的方式。使用 for range 遍历管道，当管道被关闭的时候就会退出 for range。
 
+### 补充知识点
+
+1. 关闭通道规则
+   - 只有发送方负责关闭通道；接收方不要关闭。
+   - 通道关闭后，不能继续向通道发送数据（会 panic），但仍然可以读取已有缓冲数据。
+2. for range 通道机制
+   - 通道打开：range 阻塞等待数据
+   - 通道关闭：range 读取完剩余数据后，自动结束循环，不会阻塞
+3. ⚠️ 不要重复关闭同一个通道，会触发 panic
+4. **通过for循环遍历管道的时候管道可以不关闭**
+
 ## 九、Goroutine 结合 Channel 管道
 
 需求 1：定义两个方法，一个方法给管道里面写数据，一个给管道里面读取数据。要求同步进行。
@@ -1487,12 +1498,16 @@ func main() {
 
 ```go
 package main
-import ( "fmt"
-        "sync"
-        "time"
-       )
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
 var wg sync.WaitGroup
-//向 intChan 放入 1-120000 个数
+
+// 向 intChan 放入 1-120000 个数
 func putNum(intChan chan int) {
     for i := 1; i <= 1000; i++ {
         intChan <- i
@@ -1501,6 +1516,7 @@ func putNum(intChan chan int) {
     close(intChan)
     wg.Done()
 }
+
 // 从 intChan 取出数据，并判断是否为素数,如果是，就放入到 primeChan
 func primeNum(intChan chan int, primeChan chan int, exitChan chan bool) {
     for num := range intChan {
@@ -1520,7 +1536,8 @@ func primeNum(intChan chan int, primeChan chan int, exitChan chan bool) {
     exitChan <- true
     wg.Done()
 }
-//打印素数的方法
+
+// 打印素数的方法
 func printPrime(primeChan chan int) {
     for v := range primeChan {
         fmt.Println(v)
@@ -1528,7 +1545,7 @@ func printPrime(primeChan chan int) {
     wg.Done()
 }
 func main() {
-    start := time.Now().Unix()
+    start := time.Now()
     intChan := make(chan int, 1000)
     primeChan := make(chan int, 20000) //放入结果
     //标识退出的管道
@@ -1555,10 +1572,11 @@ func main() {
         wg.Done()
     }()
     wg.Wait()
-    end := time.Now().Unix()
-    fmt.Println(end - start)
+    end := time.Now().Sub(start)//ms
+    fmt.Println(end) 
     fmt.Println("main 线程退出")
 }
+
 ```
 
 ## 十、单向管道
@@ -1581,5 +1599,248 @@ var chan3 <-chan int
 num2 := <-chan3
 //chan3<- 30 //err
 fmt.Println("num2", num2)
+```
+
+## 十、select 多路复用
+
+传统的方法在遍历管道时，如果不关闭会阻塞而导致 deadlock，在实际开发中，可能我们不好确定什么关闭该管道。
+你也许会写出如下代码使用遍历的方式来实现：
+
+```go
+for{
+    // 尝试从 ch1 接收值
+    data, ok := <-ch1
+    // 尝试从 ch2 接收值
+    data, ok := <-ch2 
+    …
+}
+```
+
+这种方式虽然可以实现从多个管道接收值的需求，但是运行性能会差很多。为了应对这种场景，Go 内置了 select 关键字，可以同时响应多个管道的操作。
+
+select 的使用类似于 switch 语句，它有一系列 case 分支和一个默认的分支。每个 case 会对应一个管道的通信（接收或发送）过程。select 会一直等待，直到某个 case 的通信操作完成时，就会执行 case 分支对应的语句。具体格式如下：
+
+```go
+select{
+    case <-ch1:
+    ... case data := <-ch2:
+    ... case ch3<-data:
+    ... default:
+    默认操作
+}
+```
+
+举个小例子来演示下 select 的使用：
+
+```go
+package main
+import ( "fmt"
+        "time"
+       )
+func main() {
+    //使用 select 可以解决从管道取数据的阻塞问题,传统的方法在遍历管道时，如果不关闭会阻
+    塞而导致 deadlock,在实际开发中，可能我们不好确定什么关闭该管道. //1.定义一个管道 10 个数据 int
+    intChan := make(chan int, 10)
+    for i := 0; i < 10; i++ {
+        intChan <- i
+    }
+    //2.定义一个管道 5 个数据 string
+    stringChan := make(chan string, 5)
+    for i := 0; i < 5; i++ {
+        stringChan <- "hello" + fmt.Sprintf("%d", i)
+    }
+    for {
+        select {
+            //注意: 这里，如果 intChan 一直没有关闭，不会一直阻塞而 deadlock，会自动到
+            下一个 case 匹配
+        case v := <-intChan:
+            fmt.Printf("从 intChan 读取的数据%d\n", v)
+            time.Sleep(time.Second)
+            case v := <-stringChan:
+            fmt.Printf("从 stringChan 读取的数据%s\n", v)
+            time.Sleep(time.Second)
+            default:
+            fmt.Printf("都取不到了，不玩了, 程序员可以加入逻辑\n")
+            time.Sleep(time.Second)
+            return
+        }
+    }
+}
+```
+
+使用 select 语句能提高代码的可读性。
+
+- 可处理一个或多个 channel 的发送/接收操作。
+- 如果多个 case 同时满足，select 会随机选择一个。
+- 对于没有 case 的 select{}会一直等待，可用于阻塞 main 函数。
+
+## 十、Golang 并发安全和锁
+
+需求：现在要计算 1-60 的各个数的阶乘，并且把各个数的阶乘放入到 map 中。最后显示出来。要求使用 goroutine 完成。
+思路
+
+1. 编写一个函数，来计算各个数的阶乘，并放入到 map 中. 
+2. 启动多个协程，将统计的将结果放入到 map 中
+
+只使用 Goroutine 实现,运行的时候可能会出现资源争夺问题 concurrent map writes：
+
+```go
+package main
+import ( "fmt"
+        "sync" _ "time"
+       )
+var (
+    myMap = make(map[int]int)
+    wg sync.WaitGroup
+)
+// test 函数就是计算 n!, 让将这个结果放入到 myMap
+func test(n int) {
+    res := 1
+    for i := 1; i <= n; i++ {
+        res *= i
+    }
+    myMap[n] = res
+    wg.Done()
+}
+func main() {
+    for i := 1; i <= 60; i++ {
+        wg.Add(1)
+        go test(i)
+    }
+    wg.Wait()
+    for i, v := range myMap {
+        fmt.Printf("map[%d]=%d\n", i, v)
+    }
+}
+```
+
+### 1、互斥锁
+
+**互斥锁**是一种常用的控制共享资源访问的方法，它能够保证同时只有一个 goroutine 可以访问共享资源。Go 语言中使用 sync 包的 Mutex 类型来实现互斥锁。 使用互斥锁来修复上面代码的问题：
+
+```go
+package main
+import ( "fmt"
+        "sync" _ "time"
+       )
+var (
+    myMap = make(map[int]int)
+    wg sync.WaitGroup
+    lock sync.Mutex
+)
+// test 函数就是计算 n!, 让将这个结果放入到 myMap
+func test(n int) {
+    res := 1
+    for i := 1; i <= n; i++ {
+        res *= i
+    }
+    //加锁
+    lock.Lock()
+    myMap[n] = res
+    //解锁
+    lock.Unlock()
+    wg.Done()
+}
+func main() {
+    for i := 1; i <= 60; i++ {
+        wg.Add(1)
+        go test(i)
+    }
+    wg.Wait()
+    for i, v := range myMap {
+        fmt.Printf("map[%d]=%d\n", i, v)
+    }
+}
+```
+
+使用互斥锁能够保证同一时间有且只有一个 goroutine 进入临界区，其他的 goroutine 则在等待锁；当互斥锁释放后，等待的 goroutine 才可以获取锁进入临界区，多个 goroutine 同时等待一个锁时，唤醒的策略是随机的。
+
+虽然使用互斥锁能解决资源争夺问题，但是并不完美，通过全局变量加锁同步来实现通讯，并不利于多个协程对全局变量的读写操作。这个时候我们也可以通过另一种方式来实现上面的功能管道(Channel)。
+
+### 2、读写互斥锁
+
+互斥锁是完全互斥的，但是有很多实际的场景下是读多写少的，当我们并发的去读取一个资源不涉及资源修改的时候是没有必要加锁的，这种场景下使用读写锁是更好的一种选择。读写锁在 Go 语言中使用 sync 包中的 RWMutex 类型。
+
+读写锁分为两种：读锁和写锁。当一个 goroutine 获取读锁之后，其他的 goroutine 如果是获取读锁会继续获得锁，如果是获取写锁就会等待；当一个 goroutine 获取写锁之后，其他的goroutine 无论是获取读锁还是写锁都会等待。
+读写锁示例：
+
+```go
+var (
+    x int64
+    wg sync.WaitGroup
+    lock sync.Mutex
+    rwlock sync.RWMutex
+)
+func write() {
+    // lock.Lock() // 加互斥锁
+    rwlock.Lock() // 加写锁
+    x = x + 1
+    time.Sleep(10 * time.Millisecond) // 假设读操作耗时 10 毫秒
+    rwlock.Unlock() // 解写锁
+    // lock.Unlock() // 解互斥锁
+    wg.Done()
+}
+func read() {
+    // lock.Lock() // 加互斥锁
+    rwlock.RLock() // 加读锁
+    time.Sleep(time.Millisecond) // 假设读操作耗时 1 毫秒
+    rwlock.RUnlock() // 解读锁
+    // lock.Unlock() // 解互斥锁
+    wg.Done()
+}
+func main() {
+    start := time.Now()
+    for i := 0; i < 10; i++ {
+        wg.Add(1)
+        go write()
+    }
+    for i := 0; i < 1000; i++ {
+        wg.Add(1)
+        go read()
+    }
+    wg.Wait()
+    end := time.Now()
+    fmt.Println(end.Sub(start))
+}
+```
+
+需要注意的是读写锁非常适合读多写少的场景，如果读和写的操作差别不大，读写锁的优势就发挥不出来。
+
+## 十一、Goroutine Recover 解决协程中出现的 Panic
+
+```go
+package main
+import ( 
+    "fmt"
+    "time"
+)
+//函数
+func sayHello() {
+    for i := 0; i < 10; i++ {
+        time.Sleep(time.Second)
+        fmt.Println("hello,world")
+    }
+}
+//函数
+func test() {
+    //这里我们可以使用 defer + recover
+    defer func() {
+        //捕获 test 抛出的 panic
+        if err := recover(); err != nil {
+            fmt.Println("test() 发生错误", err)
+        }
+    }()
+    //定义了一个 map
+    var myMap map[int]string
+    myMap[0] = "golang" //error
+}
+func main() {
+    go sayHello()
+    go test()
+    for i := 0; i < 10; i++ {
+        fmt.Println("main() ok=", i)
+        time.Sleep(time.Second)
+    }
+}
 ```
 

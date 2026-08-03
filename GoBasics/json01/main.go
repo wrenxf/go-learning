@@ -13,10 +13,10 @@ import (
 }*/
 /*结构体标签 Tag*/
 type Student struct {
-	ID     int    `json:"id"`
-	Gender string `json:"gender"`
-	Name   string `json:"name"`
-	Son    string `json:"son"`
+	ID     int    `json01:"id"`
+	Gender string `json01:"gender"`
+	Name   string `json01:"name"`
+	Son    string `json01:"son"`
 }
 
 func main() {
@@ -28,14 +28,14 @@ func main() {
 	}
 	fmt.Printf("%#v\n", s1) //%v打印数据，%#v打印详细数据
 	/*结构体对象转化成 Json 字符串*/
-	/*jsonByte, _ := json.Marshal(s1)
+	/*jsonByte, _ := json01.Marshal(s1)
 	jsonStr := string(jsonByte)
 	fmt.Printf("%v\n", jsonStr)*/
 
 	/*Json字符串转换成结G构体对象*/
 	/*var str = `{"ID":1,"Gender":"男","Name":"李四","Sno":"s0001"}`
 	var s2 Student
-	err := json.Unmarshal([]byte(str), &s2)
+	err := json01.Unmarshal([]byte(str), &s2)
 	if err != nil {
 		fmt.Println(err)
 	}
