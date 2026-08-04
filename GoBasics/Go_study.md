@@ -1844,3 +1844,848 @@ func main() {
 }
 ```
 
+# Golang 反射 
+
+## 一、反射的引子
+
+有时我们需要写一个函数，这个函数有能力统一处理各种值类型，而这些类型可能无法共享同一个接口，也可能布局未知，也有可能这个类型在我们设计函数时还不存在，这个时候我们就可以用到反射。
+1、空接口可以存储任意类型的变量，那我们如何知道这个空接口保存数据的类型是什么？值是什么呢？
+
+1. 可以使用类型断言
+2. 可以使用反射实现，也就是在程序运行时动态的获取一个变量的类型信息和值信息。
+
+2、把结构体序列化成 json 字符串，自定义结构体 Tag 标签的时候就用到了反射
+
+```go
+package main
+import ( 
+    "encoding/json"
+    "fmt"
+)
+type Student struct {
+    ID int `json:"id"` 
+    Gender string `json:"gender"` 
+    Name string `json:"name"` 
+    Sno string `json:"sno"` 
+}
+func main() {
+    var s1 = Student{
+        ID: 1, 
+        Gender: "男", 
+        Name: "李四", 
+        Sno: "s0001", 
+    }
+    var s, _ = json.Marshal(s1)
+    jsonStr := string(s)
+    fmt.Println(jsonStr)
+}
+```
+
+3、后期我们会给大家讲 ORM 框架，这个 ORM 框架就用到了反射技术
+ORM:对象关系映射（Object Relational Mapping，简称 ORM）是通过使用描述对象和数据库之间映射的元数据，将面向对象语言程序中的对象自动持久化到关系数据库中。
+
+## 二、 反射的基本介绍
+
+反射是指在程序运行期间对程序本身进行访问和修改的能力。正常情况程序在编译时，变量被转换为内存地址，变量名不会被编译器写入到可执行部分。在运行程序时，程序无法获取自身的信息。**支持反射的语言**可以在程序编译期将变量的反射信息，如字段名称、类型信息、结构体信息等整合到可执行文件中，并给程序提供接口访问反射信息，这样就可以在程序运行期获取类型的反射信息，并且有能力修改它们。
+**Golang 中反射可以实现以下功能：**
+
+1、反射可以在程序运行期间动态的获取变量的各种信息，比如变量的类型 类别
+
+2、如果是结构体，通过反射还可以获取结构体本身的信息，比如结构体的字段、结构体的方法、结构体的 tag。
+
+3、通过反射，可以修改变量的值，可以调用关联的方法
+
+**Go 语言中的变量是分为两部分的:** 
+
+- **类型信息：**预先定义好的元信息。
+- **值信息：**程序运行过程中可动态变化的。
+
+在 GoLang 的反射机制中，任何接口值都由是一个**具体类型**和**具体类型的值**两部分组成的。
+
+在 GoLang 中，反射的相关功能由内置的 reflect 包提供，任意接口值在反射中都可以理解为由 `reflect.Type` 和 `reflect.Value` 两 部 分 组 成 ， 并 且 reflect 包 提 供 了 `reflect.TypeOf` 和`reflect.ValueOf` 两个重要函数来获取任意对象的 Value 和 Type。
+
+## 三、 reflect.TypeOf()获取任意值的类型对象
+
+在 Go 语言中，使用 reflect.TypeOf()函数可以接受任意 interface{}参数，可以获得任意值的类型对象（reflect.Type），程序通过类型对象可以访问任意值的类型信息。
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+func reflectType(x interface{}) {
+    v := reflect.TypeOf(x)
+    fmt.Printf("type:%v\n", v)
+}
+func main() {
+    var a float32 = 12.5
+    reflectType(a) // type:float32
+    var b int64 = 100
+    reflectType(b) // type:int64
+}
+```
+
+**type Name 和 type Kind**
+
+**在反射中关于类型还划分为两种：**类型（Type）和种类（Kind）。因为在 Go 语言中我们可以使用 type 关键字构造很多自定义类型，而种类（Kind）就是指底层的类型，但在反射中，当需要区分指针、结构体等大品种的类型时，就会用到种类（Kind）。 举个例子，我们定义了两个指针类型和两个结构体类型，通过反射查看它们的类型和种类。
+
+Go 语言的反射中像数组、切片、Map、指针等类型的变量，它们的.Name()都是返回空。
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+func reflectType(x interface{}) {
+    t := reflect.TypeOf(x)
+    fmt.Printf("TypeOf:%v Name:%v Kind:%v\n", t, t.Name(), t.Kind())
+}
+type myInt int64
+type Person struct {
+    Name string
+    Age int
+}
+type Animal struct {
+    Name string
+}
+func main() {
+    var a *float32 // 指针
+    var b myInt // 自定义类型
+    var c rune // 类型别名
+    reflectType(a) // type: kind:ptr
+    reflectType(b) // type:myInt kind:int64
+    reflectType(c) // type:int32 kind:int32
+    var d = Person{
+        Name: "itying", Age: 18, }
+    var e = Animal{Name: "小花"}
+    reflectType(d) // type:Person kind:struct
+    reflectType(e) // type:Animal kind:struct
+    var f = []int{1, 2, 3, 4, 5}
+    reflectType(f) //TypeOf:[]int Name: Kind:slice
+}
+```
+
+**在 reflect 包中定义的 Kind 类型如下：**
+
+```go
+type Kind uint
+const (
+    Invalid Kind = iota // 非法类型
+    Bool // 布尔型
+    Int // 有符号整型
+    Int8 // 有符号 8 位整型
+    Int16 // 有符号 16 位整型
+    Int32 // 有符号 32 位整型
+    Int64 // 有符号 64 位整型
+    Uint // 无符号整型
+    Uint8 // 无符号 8 位整型
+    Uint16 // 无符号 16 位整型
+    Uint32 // 无符号 32 位整型
+    Uint64 // 无符号 64 位整型
+    Uintptr // 指针
+    Float32 // 单精度浮点数
+    Float64 // 双精度浮点数
+    Complex64 // 64 位复数类型
+    Complex128 // 128 位复数类型
+    Array // 数组
+    Chan // 通道
+    Func // 函数
+    Interface // 接口
+    Map // 映射
+    Ptr // 指针
+    Slice // 切片
+    String // 字符串
+    Struct // 结构体
+    UnsafePointer // 底层指针
+)
+```
+
+## 四、 reflect.ValueOf()
+
+reflect.ValueOf()返回的是 reflect.Value 类型，其中包含了原始值的值信息。reflect.Value 与原始值之间可以互相转换。
+
+**reflect.Value 类型提供的获取原始值的方法如下：**
+
+|           方法           |                             说明                             |
+| :----------------------: | :----------------------------------------------------------: |
+| Interface() interface {} | 将值以 interface {} 类型返回，可以通过类型断言转换为指定类型 |
+|       Int() int64        |     将值以 int 类型返回，所有有符号整型均可以此方式返回      |
+|      Uint() uint64       |     将值以 uint 类型返回，所有无符号整型均可以此方式返回     |
+|     Float() float64      | 将值以双精度（float64）类型返回，所有浮点数（float32、float64）均可以此方式返回 |
+|       Bool() bool        |                     将值以 bool 类型返回                     |
+|     Bytes() []bytes      |               将值以字节数组 [] bytes 类型返回               |
+|     String() string      |                     将值以字符串类型返回                     |
+|            …             |                              …                               |
+
+### 1、通过反射获取原始值演示 1
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+func reflectValue(x interface{}) {
+    v := reflect.ValueOf(x)
+    var c = v.Int() + 6 //获取反射的原始值
+    fmt.Println(c)
+}
+func main() {
+    var a int64 = 100
+    reflectValue(a)
+}
+```
+
+### 2、通过反射获取原始值演示 2
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+func reflectValue(x interface{}) {
+    v := reflect.ValueOf(x)
+    k := v.Kind()
+    switch k {
+        case reflect.Int64:
+        // v.Int()从反射中获取整型的原始值
+        fmt.Printf("type is int64, value is %d\n", v.Int())
+        case reflect.Float32:
+        // v.Float()从反射中获取浮点型的原始值
+        fmt.Printf("type is float32, value is %f\n", v.Float())
+        case reflect.Float64:
+        // v.Float()从反射中获取浮点型的原始值
+        fmt.Printf("type is float64, value is %f\n", v.Float())
+    }
+}
+func main() {
+    var a float32 = 3.14
+    var b int64 = 100
+    reflectValue(a) // type is float32, value is 3.140000
+    reflectValue(b) // type is int64, value is 100
+    // 将 int 类型的原始值转换为 reflect02.Value 类型
+    c := reflect.ValueOf(10)
+    fmt.Printf("type c :%T\n", c) // type c :reflect02.Value
+}
+```
+
+### 3、通过反射设置变量的值
+
+想要在函数中通过反射修改变量的值，需要注意函数参数传递的是值拷贝，必须传递变量地
+址才能修改变量值。而反射中使用专有的 Elem()方法来获取指针对应的值。
+
+![image9](assets/image9.jpg)
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+func reflectSetValue1(x interface{}) {
+    v := reflect.ValueOf(x)
+    if v.Kind() == reflect.Int64 {
+        v.SetInt(200) //修改的是副本，reflect02 包会引发 panic
+    }
+}
+func reflectSetValue2(x interface{}) {
+    v := reflect.ValueOf(x)
+    // 反射中使用 Elem()方法获取指针对应的值
+    if v.Elem().Kind() == reflect.Int64 {
+        v.Elem().SetInt(200)
+    }
+}
+func main() {
+    var a int64 = 100
+    // reflectSetValue1(a) //panic: reflect02: reflect02.Value.SetInt using unaddressable value
+    reflectSetValue2(&a)
+    fmt.Println(a)
+}
+```
+
+## 五、结构体反射
+
+### 1、与结构体相关的方法
+
+任意值通过 reflect.TypeOf()获得反射对象信息后，如果它的类型是结构体，可以通过反射值对象（reflect.Type）的 NumField()和 Field()方法获得结构体成员的详细信息。
+
+**reflect.Type 中与获取结构体成员相关的的方法如下表所示。**
+
+|                             方法                             |                             说明                             |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+|                  `Field(i int) StructField`                  |          根据索引，返回索引对应的结构体字段的信息。          |
+|                       `NumField() int`                       |                   返回结构体成员字段数量。                   |
+|        `FieldByName(name string) (StructField, bool)`        |       根据给定字符串返回字符串对应的结构体字段的信息。       |
+|           `FieldByIndex(index []int) StructField`            | 多层成员访问时，根据 `[]int` 提供的每个结构体的字段索引，返回字段的信息。 |
+| `FieldByNameFunc(match func(string) bool) (StructField,bool)` |              根据传入的匹配函数匹配需要的字段。              |
+|                      `NumMethod() int`                       |                返回该类型的方法集中方法的数目                |
+|                     `Method(int) Method`                     |               返回该类型方法集中的第 i 个方法                |
+|             `MethodByName(string)(Method, bool)`             |              根据方法名返回该类型方法集中的方法              |
+
+### 2、StructField 类型
+
+StructField 类型用来描述结构体中的一个字段的信息。StructField 的定义如下：
+
+```go
+type StructField struct {
+    // 参见 http://golang.org/ref/spec#Uniqueness_of_identifiers
+    Name string // Name 是字段的名字
+    PkgPath string //PkgPath 是非导出字段的包路径，对导出字段该字段为"" Type Type // 字段的类型
+    Tag StructTag // 字段的标签
+    Offset uintptr // 字段在结构体中的字节偏移量
+    Index []int // 用于 Type.FieldByIndex 时的索引切片
+    Anonymous bool // 是否匿名字段
+}
+```
+
+### 3、结构体反射示例
+
+当我们使用反射得到一个结构体数据之后可以通过索引依次获取其字段信息，也可以通过字段名去获取指定的字段信息。
+
+#### 1、获取结构体属性，获取执行结构体方法
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+//student 结构体
+type Student struct {
+    Name string `json:"name"` 
+    Age int `json:"age"` 
+    Score int `json:"score"` }
+func (s Student) GetInfo() string {
+    var str = fmt.Sprintf("姓名:%v 年龄:%v 成绩:%v", s.Name, s.Age, s.Score)
+    fmt.Println(str)
+    return str
+}
+func (s *Student) SetInfo(name string, age int, score int) {
+    s.Name = name
+    s.Age = age
+    s.Score = score
+}
+func (s *Student) Print() {
+    fmt.Println("打印方法...")
+}
+//打印字段
+func PrintStructField(s interface{}) {
+    t := reflect.TypeOf(s)
+    // v := reflect.ValueOf(s)
+    kind := t.Kind()
+    if t.Kind() != reflect.Struct && t.Elem().Kind() != reflect.Struct {
+        fmt.Println("传入的不是结构体")
+        return
+    }
+    //1、通过类型变量里面的 Field 可以获取结构体的字段
+    field0 := t.Field(0)
+    fmt.Println(field0.Name)
+    fmt.Println(field0.Type)
+    fmt.Println(field0.Tag.Get("json"))
+    //2、通过类型变量里面的 FieldByName 可以获取结构体的字段
+    field1, _ := t.FieldByName("Age")
+    fmt.Println(field1.Name)
+    fmt.Println(field1.Type)
+    fmt.Println(field1.Tag.Get("json"))
+    //3、获取到该结构体有几个字段
+    num := t.NumField()
+    fmt.Println("字段数量:", num)
+}
+//方法
+func PrintStructFn(s interface{}) {
+    t := reflect.TypeOf(s)
+    v := reflect.ValueOf(s)
+    if t.Kind() != reflect.Struct && t.Elem().Kind() != reflect.Struct {
+        fmt.Println("传入的不是结构体")
+        return
+    }
+    //1、通过类型变量里面的 Method 可以获取结构体的方法
+    var tMethod = t.Method(0) //注意
+    fmt.Println(tMethod.Name)
+    fmt.Println(tMethod.Type)
+    //2、通过类型变量获取这个结构体有多少个方法
+    fmt.Println(t.NumMethod())
+    //3、执行方法 （注意需要使用值变量，并且要注意参数）
+    // v.Method(0).Call(nil)
+    v.MethodByName("Print").Call(nil)
+    //4、执行方法传入参数 （注意需要使用值变量，并且要注意参数）
+    var params []reflect.Value //声明了 []reflect.Value
+    params = append(params, reflect.ValueOf("张三"))
+    params = append(params, reflect.ValueOf(22))
+    params = append(params, reflect.ValueOf(100))
+    v.MethodByName("SetInfo").Call(params) //传入的参数是 []reflect.Value, 返回[]reflect.Va
+    lue
+    // 5、执行方法获取方法的值
+    info := v.MethodByName("GetInfo").Call(nil)
+    fmt.Println(info)
+}
+func main() {
+    stu1 := Student{
+        Name: "小明", 
+        Age: 15, 
+        Score: 98, }
+    // PrintStructField(stu1)
+    PrintStructFn(&stu1)
+}
+```
+
+#### 2、修改结构体方法
+
+```go
+package main
+import ( 
+    "fmt"
+    "reflect"
+)
+//student 结构体
+type Student struct {
+    Name string `json:"name"` 
+    Age int `json:"age"` 
+    Score int `json:"score"` }
+func (s Student) GetInfo() string {
+    var str = fmt.Sprintf("姓名:%v 年龄:%v 成绩:%v", s.Name, s.Age, s.Score)
+    return str
+}
+//反射修改结构体属性
+func reflectChangeStruct(s interface{}) {
+    t := reflect.TypeOf(s)
+    v := reflect.ValueOf(s)
+    if t.Elem().Kind() != reflect.Struct {
+        fmt.Println("传入的不是结构体指针类型")
+        return
+    }
+    name := v.Elem().FieldByName("Name")
+    name.SetString("李四") // 设置值
+    age := v.Elem().FieldByName("Age")
+    age.SetInt(20) // 设置值
+}
+func main() {
+    stu1 := Student{
+        Name: "小明", 
+        Age: 15, 
+        Score: 98, }
+    // PrintStructField(stu1)
+    reflectChangeStruct(&stu1)
+    fmt.Println(stu1.GetInfo())
+}
+```
+
+## 六、不要乱用反射
+
+反射是一个强大并富有表现力的工具，能让我们写出更灵活的代码。但是反射不应该被滥用。
+
+1. 性能差：运行时解析类型，比直接硬编码慢很多
+
+1. 编译无校验：基于反射的代码是极其脆弱的，反射中的类型错误会在真正运行的时候才会引发 panic，那很可能是在代码写完的很长时间之后,不会编译报错
+2. 代码晦涩难维护，能不用反射就优先避免
+
+# Golang 文件 目录操作 
+
+## 一、打开和关闭文件
+
+os.Open()函数能够打开一个文件，返回一个*File 和一个 err。操作完成文件对象以后**一定要记得关闭文件**
+
+```go
+package main
+import ( 
+    "fmt"
+    "os"
+)
+func main() {
+    // 只读方式打开当前目录下的 main.go 文件
+    file, err := os.Open("./main.go")
+    if err != nil {
+        fmt.Println("open file failed!, err:", err)
+        return
+    }
+    fmt.Println(file) //&{0xc000078780}
+    defer file.Close() // 关闭文件
+}
+```
+
+**为了防止文件忘记关闭，我们通常使用 defer 注册文件关闭语句。** 
+
+## 二、file.Read() 读取文件
+
+### 1、基本使用
+
+Read 方法定义如下：
+
+```go
+func (f *File) Read(b []byte) (n int, err error)
+```
+
+它接收一个字节切片，返回读取的字节数和可能的具体错误，读到文件末尾时会返回 0 和io.EOF。 举个例子：
+
+```go
+package main
+import ( 
+    "fmt"
+    "io"
+    "os"
+)
+func main() {
+    // 只读方式打开当前目录下的 main.go 文件
+    file, err := os.Open("./main.go")
+    if err != nil {
+        fmt.Println("open file failed!, err:", err)
+        return
+    }
+    defer file.Close()
+    // 使用 Read 方法读取数据，注意一次只会读取 128 个字节
+    var tmp = make([]byte, 128)
+    n, err := file.Read(tmp)
+    if err == io.EOF {
+        fmt.Println("文件读完了")
+        return
+    }
+    if err != nil {
+        fmt.Println("read file failed, err:", err)
+        return
+    }
+    fmt.Printf("读取了%d 字节数据\n", n)
+    fmt.Println(string(tmp[:n]))
+}
+```
+
+## 三、循环读取
+
+使用 for 循环读取文件中的所有数据
+
+```go
+func main() {
+    // 只读方式打开当前目录下的 main.go 文件
+    file, err := os.Open("./main.go")
+    if err != nil {
+        fmt.Println("open file failed!, err:", err)
+        return
+    }
+    defer file.Close()
+    // 循环读取文件
+    var content []byte
+    var tmp = make([]byte, 128)
+    for {
+        n, err := file.Read(tmp)
+        if err == io.EOF {
+            fmt.Println("文件读完了")
+            break
+        }
+        if err != nil {
+            fmt.Println("read file failed, err:", err)
+            return
+        }
+        content = append(content, tmp[:n]...)
+    }
+    fmt.Println(string(content))
+}
+```
+
+## 四、bufio 读取文件
+
+bufio 是在 file 的基础上封装了一层 API，支持更多的功能。
+
+```go
+package main
+import ( 
+    "bufio"
+    "fmt"
+    "io"
+    "os"
+)
+// bufio 按行读取示例
+func main() {
+    file, err := os.Open("C:/test.txt")
+    if err != nil {
+        fmt.Println("open file failed, err:", err)
+        return
+    }
+    defer file.Close()
+    reader := bufio.NewReader(file)
+    for {
+        line, err := reader.ReadString('\n') //注意是字符
+        if err == io.EOF {
+            if len(line) != 0 {
+                fmt.Println(line)
+            }
+            fmt.Println("文件读完了")
+            break
+        }
+        if err != nil {
+            fmt.Println("read file failed, err:", err)
+            return
+        }
+        fmt.Print(line)
+    }
+}
+```
+
+## 五、ioutil 读取整个文件
+
+**注意:**
+
+Go 1.16 版本起，`ioutil` 包被**废弃**，原 `ioutil.ReadFile` 等价迁移到 `os.ReadFile`，官方推荐直接使用 `os.ReadFile`，但底层逻辑完全一致。
+
+io/ioutil 包的 ReadFile 方法能够读取完整的文件，只需要将文件名作为参数传入。
+
+```go
+package main
+import ( 
+    "fmt"
+    "io/ioutil"
+)
+// ioutil.ReadFile 读取整个文件
+func main() {
+    content, err := ioutil.ReadFile("./main.go")
+    if err != nil {
+        fmt.Println("read file failed, err:", err)
+        return
+    }
+    fmt.Println(string(content))
+}
+```
+
+## 六、文件写入操作
+
+os.OpenFile()函数能够以指定模式打开文件，从而实现文件写入相关功能。
+
+```go
+func OpenFile(name string, flag int, perm FileMode) (*File, error) {
+    ... 
+}
+```
+
+其中：
+name：要打开的文件名 flag：打开文件的模式。 模式有以下几种：
+
+| 模式        | 含义     |
+| ----------- | -------- |
+| os.O_WRONLY | 只写     |
+| os.O_CREATE | 创建文件 |
+| os.O_RDONLY | 只读     |
+| os.O_RDWR   | 读写     |
+| os.O_TRUNC  | 清空     |
+| os.O_APPEND | 追加     |
+
+
+perm：文件权限，一个八进制数。r（读）04，w（写）02，x（执行）01。
+
+### 1、Write 和 WriteString
+
+```go
+package main
+import ( 
+    "fmt"
+    "os"
+)
+func main() {
+    file, err := os.OpenFile("C:/test.txt", os.O_CREATE|os.O_RDWR, 0666)
+    if err != nil {
+        fmt.Println("open file failed, err:", err)
+        return
+    }
+    defer file.Close()
+    str := "你好 golang"
+    file.Write([]byte(str)) //写入字节切片数据
+    file.WriteString("直接写入的字符串数据") //直接写入字符串数据
+}
+```
+
+`0666` 是 **Unix/Linux 文件权限八进制数字**，Windows 系统下这个参数**无效**，仅 Linux/macOS 生效。
+
+权限分三类用户：
+
+1. 所有者（user，第一位数字）
+2. 同组用户（group，第二位数字）
+3. 其他所有人（other，第三位数字）
+
+每一位数字由 3 种权限相加：
+
+- 4 = 读 r
+- 2 = 写 w
+- 1 = 执行 x
+
+开头的 `0` 代表**八进制标识**，必须写，否则 Go 会当成十进制解析，权限完全错乱。
+
+```
+0   6      6      6
+八进制 所有者 组用户 其他用户
+```
+
+单个数字 `6 = 4(读) + 2(写)`，**无执行权限**：
+
+**场景逻辑：普通文本文件不需要执行权限**
+
+- 所有者：可读、可写
+- 同组用户：可读、可写
+- 其他用户：可读、可写
+
+权限文字等价：`rw-rw-rw-`
+
+### 2、bufio.NewWriter
+
+```go
+package main
+import ( 
+    "bufio"
+    "fmt"
+    "os"
+)
+func main() {
+    file, err := os.OpenFile("C:/test.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+    if err != nil {
+        fmt.Println("open file failed, err:", err)
+        return
+    }
+    defer file.Close()
+    writer := bufio.NewWriter(file)
+    for i := 0; i < 10; i++ {
+        writer.WriteString("你好 golang\r\n") //将数据先写入缓存
+    }
+    writer.Flush() //将缓存中的内容写入文件（注意）
+}
+```
+
+### 3、ioutil.WriteFile
+
+```go
+package main
+import ( 
+    "fmt"
+    "io/ioutil"
+)
+func main() {
+    str := "hello golang" err := ioutil.WriteFile("C:/test.txt", []byte(str), 0666)
+    if err != nil {
+        fmt.Println("write file failed, err:", err)
+        return
+    }
+}
+```
+
+## 七、文件重命名
+
+```go
+err := os.Rename("C:/test1.txt", "D:/test1.txt") //只能同盘操作
+if err != nil {
+    fmt.Println(err)
+}
+```
+
+## 八、复制文件
+
+**第一种复制文件方法：**ioutil 进行复制
+
+```go
+package main
+import ( 
+    "fmt"
+    "io/ioutil"
+)
+//自己编写一个函数，接收两个文件路径 srcFileName dstFileName
+func CopyFile(dstFileName string, srcFileName string) (err error) {
+    input, err := ioutil.ReadFile(srcFileName)
+    if err != nil {
+        fmt.Println(err)
+        return err
+    }
+    err = ioutil.WriteFile(dstFileName, input, 0644)
+    if err != nil {
+        fmt.Println("Error creating", dstFileName)
+        fmt.Println(err)
+        return err
+    }
+    return nil
+}
+func main() {
+    srcFile := "c:/test1.zip" dstFile := "D:/test1.zip" err := CopyFile(dstFile, srcFile)
+    if err == nil {
+        fmt.Printf("拷贝完成\n")
+    } else {
+        fmt.Printf("拷贝错误 err=%v\n", err)
+    }
+}
+```
+
+**第二种复制文件方法流的方式复制：**
+
+```go
+package main
+import ( 
+    "fmt"
+    "io"
+    "os"
+)
+//自己编写一个函数，接收两个文件路径 srcFileName dstFileName
+func CopyFile(dstFileName string, srcFileName string) (err error) {
+    source, _ := os.Open(srcFileName)
+    destination, _ := os.OpenFile(dstFileName, os.O_CREATE|os.O_WRONLY, 0666)
+    buf := make([]byte, 128)
+    for {
+        n, err := source.Read(buf)
+        if err != nil && err != io.EOF {
+            return err
+        }
+        if n == 0 {
+            break
+        }
+        if _, err := destination.Write(buf[:n]); err != nil {
+            return err
+        }
+    }
+}
+func main() {
+    //调用 CopyFile 完成文件拷贝
+    srcFile := "c:/000.avi" dstFile := "D:/000.avi" err := CopyFile(dstFile, srcFile)
+    if err == nil {
+        fmt.Printf("拷贝完成\n")
+    } else {
+        fmt.Printf("拷贝错误 err=%v\n", err)
+    }
+}
+```
+
+## 九、创建目录
+
+一次创建一个目录
+
+```go
+err := os.Mkdir("./abc", 0666)
+if err != nil {
+    fmt.Println(err)
+}
+```
+
+一次创建多个目录
+
+```go
+err := os.MkdirAll("dir1/dir2/dir3", 0666) //创建多级目录
+if err != nil {
+    fmt.Println(err)
+}
+```
+
+## 十、删除目录和文件
+
+### 1、删除一个目录或者文件
+
+```go
+err := os.Remove("t.txt")
+if err != nil {
+    fmt.Println(err)
+}
+```
+
+
+
+### 2、一次删除多个目录或者文件
+
+```go
+err := os.RemoveAll("aaa")
+if err != nil {
+    fmt.Println(err)
+}
+```
+
