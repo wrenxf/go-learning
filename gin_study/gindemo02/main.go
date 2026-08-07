@@ -14,6 +14,8 @@ type Article struct {
 
 func main() {
 	r := gin.Default()
+	//配置模板文件
+	r.LoadHTMLGlob("templates/*")
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "值：%v", "首页")
 	})
@@ -44,6 +46,23 @@ func main() {
 			Content: "测试内容",
 		}
 		c.JSONP(200, a)
+	})
+	r.GET("/xml", func(c *gin.Context) {
+		c.XML(200, gin.H{
+			"success": true,
+			"msg":     "你好gin我是xml",
+		})
+	})
+	r.GET("/news", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "news.html", gin.H{
+			"title": "我是后台数据",
+		})
+	})
+	r.GET("/goods", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "goods.html", gin.H{
+			"title": "我是后台数据",
+			"price": "20",
+		})
 	})
 	r.Run()
 }
