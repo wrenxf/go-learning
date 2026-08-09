@@ -54,7 +54,7 @@ func main() {
 		})
 	})
 	r.GET("/news", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "news.html", gin.H{
+		c.HTML(http.StatusOK, "user.html", gin.H{
 			"title": "我是后台数据",
 		})
 	})

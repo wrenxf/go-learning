@@ -851,3 +851,146 @@ func main() {
 <link rel="stylesheet" href="/static/css/base.css" />
 ```
 
+# 七、路由详解
+
+路由（Routing）是由一个 URI（或者叫路径）和一个特定的 HTTP 方法（GET、POST 等）组成的，涉及到应用如何响应客户端对某个网站节点的访问。
+
+前面章节我们给大家介绍了路由基础以及路由配置，这里我们详细给大家讲讲路由传值、路由返回值
+
+## 7.1、GET POST 以及获取 Get Post 传值
+
+### 7.1.1、Get 请求传值
+
+GET 	/user?uid=20&page=1
+
+```go
+router.GET("/user", func(c *gin.Context) {
+    uid := c.Query("uid")
+    page := c.DefaultQuery("page", "0")
+    c.String(200, "uid=%v page=%v", uid, page)
+})
+```
+
+### 7.1.2、动态路由传值
+
+域名/user/20
+
+```go
+r.GET("/user/:uid", func(c *gin.Context) {
+    uid := c.Param("uid")
+    c.String(200, "userID=%s", uid)
+})
+```
+
+### 7.1.3、Post 请求传值 获取 form 表单数据
+
+定义一个 add_user.html 的页面
+
+```html
+{{ define "default/add_user.html" }}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+        <form action="/doAddUser" method="post">
+            用户名：<input type="text" name="username" />
+            密码: <input type="password" name="password" />
+            <input type="submit" value="提交">
+        </form>
+    </body>
+</html>
+{{end}}
+```
+
+通过 c.PostForm 接收表单传过来的数据
+
+```go
+router.GET("/addUser", func(c *gin.Context) {
+    c.HTML(200, "default/add_user.html", gin.H{})
+})
+router.POST("/doAddUser", func(c *gin.Context) {
+    username := c.PostForm("username")
+    password := c.PostForm("password")
+    age := c.DefaultPostForm("age", "20")
+    c.JSON(200, gin.H{ "usernmae": username, "password": password, "age": age, })
+})
+```
+
+### 7.1.4、获取 GET POST 传递的数据绑定到结构体
+
+为了能够更方便的获取请求相关参数，提高开发效率，我们可以基于请求的 Content-Type识别请求数据类型并利用反射机制自动提取请求中 QueryString、form 表单、JSON、XML 等参数到结构体中。 下面的示例代码演示了.ShouldBind()强大的功能，它能够基于请求自动提取 JSON、form 表单和 QueryString 类型的数据，并把值绑定到指定的结构体对象。
+
+```go
+//注意首字母大写
+type Userinfo struct {
+    Username string `form:"username" json:"user"` Password string `form:"password" json:"password"` }
+```
+
+**Get 传值绑定到结构体**
+
+/?username=zhangsan&password=123456
+
+```go
+router.GET("/", func(c *gin.Context) {
+    var userinfo Userinfo
+    if err := c.ShouldBind(&userinfo); err == nil {
+        c.JSON(http.StatusOK, userinfo)
+    } else {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    }
+})
+```
+
+返回数据
+{"user":"zhangsan","password":"123456"}
+
+**Post 传值绑定到结构体**
+
+```go
+router.POST("/doLogin", func(c *gin.Context) {
+    var userinfo Userinfo
+    if err := c.ShouldBind(&userinfo); err == nil {
+        c.JSON(http.StatusOK, userinfo)
+    } else {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    }
+})
+```
+
+返回数据
+{"user":"zhangsan","password":"123456"}
+
+### 7.1.5、获取 Post Xml 数据
+
+在 API 的开发中，我们经常会用到 JSON 或 XML 来作为数据交互的格式，这个时候我们可以在 gin 中使用 c.GetRawData()获取数据。
+
+```html
+<?xml version="1.0" encoding="UTF-8"?>
+<article>
+    <content type="string">我是张三</content>
+    <title type="string">张三</title>
+</article>
+```
+
+![image2](assets/image2.png)
+
+```go
+type Article struct {
+    Title string `xml:"title"` Content string `xml:"content"` }
+router.POST("/xml", func(c *gin.Context) {
+    b, _ := c.GetRawData() // 从 c.Request.Body 读取请求数据
+    article := &Article{}
+    if err := xml.Unmarshal(b, &article); err == nil {
+        c.JSON(http.StatusOK, article)
+    } else {
+        c.JSON(http.StatusBadRequest, err.Error())
+    }
+})
+```
+
+## 7.2、简单的路由组
