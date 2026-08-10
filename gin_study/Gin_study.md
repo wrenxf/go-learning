@@ -928,7 +928,8 @@ router.POST("/doAddUser", func(c *gin.Context) {
 ```go
 //注意首字母大写
 type Userinfo struct {
-    Username string `form:"username" json:"user"` Password string `form:"password" json:"password"` }
+    Username string `form:"username" json:"user"` 
+    Password string `form:"password" json:"password"` }
 ```
 
 **Get 传值绑定到结构体**
@@ -994,3 +995,27 @@ router.POST("/xml", func(c *gin.Context) {
 ```
 
 ## 7.2、简单的路由组
+
+https://gin-gonic.com/zh-cn/docs/examples/grouping-routes/
+
+```go
+func main() {
+    router := gin.Default()
+    // 简单的路由组: v1
+    v1 := router.Group("/v1")
+    {
+        v1.POST("/login", loginEndpoint)
+        v1.POST("/submit", submitEndpoint)
+        v1.POST("/read", readEndpoint)
+    }
+    // 简单的路由组: v2
+    v2 := router.Group("/v2")
+    {
+        v2.POST("/login", loginEndpoint)
+        v2.POST("/submit", submitEndpoint)
+        v2.POST("/read", readEndpoint)
+    }
+    router.Run(":8080")
+}
+```
+
