@@ -1467,3 +1467,116 @@ r.GET("/", func(c *gin.Context) {
 })
 ```
 
+# 十、Gin 中自定义 Model
+
+## 10.1、关于 Model
+
+如果我们的应用非常简单的话，我们可以在 Controller 里面处理常见的业务逻辑。但是如果我们有一个功能想在多个控制器、或者多个模板里面复用的话，那么我们就可以把公共的功能单独抽取出来作为一个模块（Model）。 Model 是逐步抽象的过程，一般我们会在 Model里面封装一些公共的方法让不同 Controller 使用，也可以在 Model 中实现和数据库打交道
+
+## 10.2、Model 里面封装公共的方法
+
+### 1、新建 models/ tools.go
+
+```go
+package models
+import ( "crypto/md5"
+        "fmt"
+        "time"
+        "github.com/astaxie/beego"
+       )
+//时间戳间戳转换成日期
+func UnixToDate(timestamp int) string {
+    t := time.Unix(int64(timestamp), 0)
+    return t.Format("2006-01-02 15:04:05")
+}
+//日期转换成时间戳 2020-05-02 15:04:05
+func DateToUnix(str string) int64 {
+    template := "2006-01-02 15:04:05"
+    t, err := time.ParseInLocation(template, str, time.Local)
+    if err != nil {
+        return 0
+    }
+    return t.Unix()
+}
+func GetUnix() int64 {
+    return time.Now().Unix()
+}
+func GetDate() string {
+    template := "2006-01-02 15:04:05"
+    return time.Now().Format(template)
+}
+func GetDay() string {
+    template := "20060102"
+    return time.Now().Format(template)
+}
+func Md5(str string) string {
+    data := []byte(str)
+    return fmt.Sprintf("%x\n", md5.Sum(data))
+}
+```
+
+## 10.3、控制器中调用 Model
+
+```go
+package controllers
+import ( "gin_demo/models"
+       )
+day := models.GetDay()
+```
+
+## 10.4、调用 Model 注册全局模板函数
+
+models/tools.go
+//时间戳间戳转换成日期
+
+```go
+func UnixToDate(timestamp int64) string {
+
+    t := time.Unix(timestamp, 0)
+    return t.Format("2006-01-02 15:04:05")
+}
+```
+
+main.go
+
+//注册全局模板函数 注意顺序，注册模板函数需要在加载模板上面
+
+```go
+r := gin.Default()
+r.SetFuncMap(template.FuncMap{ "unixToDate": models.UnixToDate, })
+```
+
+**控制器**
+
+```go
+func (c UserController) Add(ctx *gin.Context) {
+    ctx.HTML(http.StatusOK, "admin/user/add.html", gin.H{ "now": models.GetUnix(), })
+}
+```
+
+**模板**
+
+```html
+<h2>{{.now | unixToDate}}</h2>
+```
+
+## 10.5、Golang Md5 加密
+
+打开 golang 包对应的网站：https://pkg.go.dev/，搜索 md5
+方法一：
+
+```go
+data := []byte("123456")
+has := md5.Sum(data)
+md5str := fmt.Sprintf("%x", has)
+fmt.Println(md5str)
+```
+
+方法二：
+
+```go
+h := md5.New()
+io.WriteString(h, "123456")
+fmt.Printf("%x\n", h.Sum(nil))
+```
+
