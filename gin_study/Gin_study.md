@@ -1019,3 +1019,177 @@ func main() {
 }
 ```
 
+## 7.3、Gin 路由文件 分组
+
+### 7.3.1、新建 routes 文件夹，routes 文件下面新建 adminRoutes.go、apiRoutes.go、defaultRoutes.go
+
+#### 1、新建 adminRoutes.go
+
+```go
+package routes
+import ( 
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+func AdminRoutesInit(router *gin.Engine) {
+    adminRouter := router.Group("/admin")
+    {
+        adminRouter.GET("/user", func(c *gin.Context) {
+            c.String(http.StatusOK, "用户")
+        })
+        adminRouter.GET("/news", func(c *gin.Context) {
+            c.String(http.StatusOK, "news")
+        })
+    }
+}
+```
+
+#### 2、新建 apiRoutes.go
+
+```go
+package routes
+import ( "net/http"
+        "github.com/gin-gonic/gin"
+       )
+func ApiRoutesInit(router *gin.Engine) {
+    apiRoute := router.Group("/api")
+    {
+        apiRoute.GET("/user", func(c *gin.Context) {
+            c.JSON(http.StatusOK, gin.H{ "username": "张三",
+                                        "age": 20, })
+        })
+        apiRoute.GET("/news", func(c *gin.Context) {
+            c.JSON(http.StatusOK, gin.H{ "title": "这是新闻", })
+        })
+    }
+}
+```
+
+#### 3、新建 defaultRoutes.go
+
+```go
+package routes
+import ( "github.com/gin-gonic/gin"
+       )
+func DefaultRoutesInit(router *gin.Engine) {
+    defaultRoute := router.Group("/")
+    {
+        defaultRoute.GET("/", func(c *gin.Context) {
+            c.String(200, "首页")
+        })
+    }
+}
+```
+
+### 7.3.2 、配置 main.go
+
+```go
+package main
+import ( "gin_demo/routes"
+        "github.com/gin-gonic/gin"
+       )
+//注意首字母大写
+type Userinfo struct {
+    Username string `form:"username" json:"user"` Password string `form:"password" json:"password"` }
+func main() {
+    r := gin.Default()
+    routes.AdminRoutesInit(r)
+    routes.ApiRoutesInit(r)
+    routes.DefaultRoutesInit(r)
+    r.Run(":8080")
+}
+```
+
+访问 /api/user /admin/user 测试
+
+# 八、Gin 中自定义控制器
+
+## 8.1、控制器分组
+
+当我们的项目比较大的时候有必要对我们的控制器进行分组
+新建 controller/admin/NewsController.go
+
+```go
+package admin
+import ( "net/http"
+        "github.com/gin-gonic/gin"
+       )
+type NewsController struct {
+}
+func (c NewsController) Index(ctx *gin.Context) {
+    ctx.String(http.StatusOK, "新闻首页")
+}
+```
+
+新建 controller/admin/UserController.go
+
+```go
+package admin
+import ( "net/http"
+        "github.com/gin-gonic/gin"
+       )
+type UserController struct {
+}
+func (c UserController) Index(ctx *gin.Context) {
+    ctx.String(http.StatusOK, "这是用户首页")
+}
+func (c UserController) Add(ctx *gin.Context) {
+    ctx.String(http.StatusOK, "增加用户")
+}
+```
+
+配置对应的路由 --adminRoutes.go
+
+其他路由的配置方法类似
+
+```go
+package routes
+import ( "gin_demo/controller/admin"
+        "net/http"
+        "github.com/gin-gonic/gin"
+       )
+func AdminRoutesInit(router *gin.Engine) {
+    adminRouter := router.Group("/admin")
+    {
+        adminRouter.GET("/user", admin.UserController{}.Index)
+        adminRouter.GET("/user/add", admin.UserController{}.Add)
+        adminRouter.GET("/news", admin.NewsController{}.Add)
+    }
+}
+```
+
+## 8.2、控制器的继承
+
+### 1、新建 controller/admin/BaseController.go
+
+```go
+package admin
+import ( "net/http"
+        "github.com/gin-gonic/gin"
+       )
+type BaseController struct {
+}
+func (c BaseController) Success(ctx *gin.Context) {
+    ctx.String(http.StatusOK, "成功")
+}
+func (c BaseController) Error(ctx *gin.Context) {
+    ctx.String(http.StatusOK, "失败")
+}
+```
+
+### 2、NewsController 继承 BaseController
+
+继承后就可以调用控制器里面的公共方法了
+
+```go
+package admin
+import ( "github.com/gin-gonic/gin"
+       )
+type NewsController struct {
+    BaseController
+}
+func (c NewsController) Index(ctx *gin.Context) {
+    c.Success(ctx)
+}
+```
+
