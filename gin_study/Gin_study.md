@@ -1849,3 +1849,188 @@ func Hello(in string) (out string) {
 }
 ```
 
+# 十二、Gin 中的 Cookie
+
+## 12.1、Cookie 介绍
+
+- HTTP 是无状态协议。简单地说，当你浏览了一个页面，然后转到同一个网站的另一个页面，服务器无法认识到这是同一个浏览器在访问同一个网站。每一次的访问，都是没有任何关系的。如果我们要实现多个页面之间共享数据的话我们就可以使用 Cookie 或者 Session 实现
+- cookie 是存储于访问者计算机的浏览器中。可以让我们用同一个浏览器访问同一个域名的时候共享数据。
+
+## 12.2、Cookie 能实现的功能
+
+1. 保持用户登录状态
+2. 保存用户浏览的历史记录
+3. 猜你喜欢，智能推荐
+4. 电商网站的加入购物车
+
+## 12.3、设置和获取 Cookie
+
+https://gin-gonic.com/zh-cn/docs/examples/cookie/
+
+**设置 Cookie**
+
+```go
+c.SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool)
+```
+
+第一个参数 key
+第二个参数 value
+第三个参数 过期时间.如果只想设置 Cookie 的保存路径而不想设置存活时间，可以在第三个参数中传递 nil
+第四个参数 cookie 的路径
+第五个参数 cookie 的路径 Domain 作用域 本地调试配置成 localhost , 正式上线配置成域名
+第六个参数是 secure ，当 secure 值为 true 时，cookie 在 HTTP 中是无效，在 HTTPS 中才有效
+第七个参数 httpOnly，是微软对 COOKIE 做的扩展。如果在 COOKIE 中设置了“httpOnly”属性，则通过程序（JS 脚本、applet 等）将无法读取到 COOKIE 信息，防止 XSS 攻击产生
+
+**获取 Cookie**
+
+```
+cookie, err := c.Cookie("name")
+```
+
+**完整 demo**
+
+```go
+package main
+import ( "gin_demo/models"
+        "html/template"
+        "github.com/gin-gonic/gin"
+       )
+func main() {
+    r := gin.Default()
+    r.SetFuncMap(template.FuncMap{ "unixToDate": models.UnixToDate, })
+    r.GET("/", func(c *gin.Context) {
+        c.SetCookie("usrename", "张三", 3600, "/", "localhost", false, true)
+        c.String(200, "首页")
+    })
+    r.GET("/user", func(c *gin.Context) {
+        username, _ := c.Cookie("usrename")
+        c.String(200, "用户-"+username)
+    })
+    r.Run(":8080")
+}
+```
+
+## 12.4 、多个二级域名共享 cookie
+
+1、分别把 a.itying.com 和 b.itying.com 解析到我们的服务器
+2、我们想的是用户在 a.itying.com 中设置 Cookie 信息后在 b.itying.com 中获取刚才设置的cookie，也就是实现多个二级域名共享 cookie
+
+这时候的话我们就可以这样设置 cookie
+
+```go
+c.SetCookie("usrename", "张三", 3600, "/", ".itying.com", false, true)
+```
+
+# 十三、Gin 中的 Session
+
+## 13.1、Session 简单介绍
+
+session 是另一种记录客户状态的机制，不同的是 Cookie 保存在客户端浏览器中，而 session保存在服务器上。
+
+## 13.2、Session 的工作流程
+
+当客户端浏览器第一次访问服务器并发送请求时，服务器端会创建一个 session 对象，生成一个类似于 key,value 的键值对，然后将 value 保存到服务器 将 key(cookie)返回到浏览器(客户)端。浏览器下次访问时会携带 key(cookie)，找到对应的 session(value)。
+
+## 13.3、Gin 中使用 Session
+
+Gin 官方没有给我们提供 Session 相关的文档，这个时候我们可以使用第三方的 Session 中间件来实现
+
+- https://github.com/gin-contrib/sessions
+  gin-contrib/sessions 中间件支持的存储引擎：
+- cookie
+- memstore
+- redis 
+- memcached
+- mongodb
+
+## 13.4、基于 Cookie 存储 Session
+
+### 1、安装 session 包
+
+```
+go get github.com/gin-contrib/sessions
+```
+
+### 2、基本的 session 用法
+
+```go
+package main
+import ( "github.com/gin-contrib/sessions"
+        "github.com/gin-contrib/sessions/cookie"
+        "github.com/gin-gonic/gin"
+       )
+func main() {
+    r := gin.Default()
+    // 创建基于 cookie 的存储引擎，secret11111 参数是用于加密的密钥
+    store := cookie.NewStore([]byte("secret11111"))
+    // 设置 session 中间件，参数 mysession，指的是 session 的名字，也是 cookie 的名字
+    // store 是前面创建的存储引擎，我们可以替换成其他存储引擎
+    r.Use(sessions.Sessions("mysession", store))
+    r.GET("/", func(c *gin.Context) {
+        //初始化 session 对象
+        session := sessions.Default(c)
+        //设置过期时间
+        session.Options(sessions.Options{
+            MaxAge: 3600 * 6, // 6hrs
+        })
+        //设置 Session
+        session.Set("username", "张三")
+        session.Save()
+        c.JSON(200, gin.H{"msg": session.Get("username")})
+    })
+    r.GET("/user", func(c *gin.Context) {
+        // 初始化 session 对象
+        session := sessions.Default(c)
+        // 通过 session.Get 读取 session 值
+        username := session.Get("username")
+        c.JSON(200, gin.H{"username": username})
+    })
+    r.Run(":8000")
+}
+```
+
+## 13.5、基于 Redis 存储 Session
+
+如果我们想将 session 数据保存到 redis 中，只要将 session 的存储引擎改成 redis 即可。使用 redis 作为存储引擎的例子：
+首先安装 redis 存储引擎的包
+
+```
+go get github.com/gin-contrib/sessions/redis
+```
+
+例子：
+
+```go
+package main
+import ( "github.com/gin-contrib/sessions"
+        "github.com/gin-contrib/sessions/redis"
+        "github.com/gin-gonic/gin"
+       )
+func main() {
+    r := gin.Default()
+    // 初始化基于 redis 的存储引擎
+    // 参数说明：
+    // 第 1 个参数 - redis 最大的空闲连接数
+    // 第 2 个参数 - 数通信协议 tcp 或者 udp
+    // 第 3 个参数 - redis 地址, 格式，host:port
+    // 第 4 个参数 - redis 密码
+    // 第 5 个参数 - session 加密密钥
+    store, _ := redis.NewStore(10, "tcp", "localhost:6379", "", []byte("secret"))
+    r.Use(sessions.Sessions("mysession", store))
+    r.GET("/", func(c *gin.Context) {
+        session := sessions.Default(c)
+        session.Set("username", "李四")
+        session.Save()
+        c.JSON(200, gin.H{"username": session.Get("username")})
+    })
+    r.GET("/user", func(c *gin.Context) {
+        // 初始化 session 对象
+        session := sessions.Default(c)
+        // 通过 session.Get 读取 session 值
+        username := session.Get("username")
+        c.JSON(200, gin.H{"username": username})
+    })
+    r.Run(":8000")
+}
+```
+
