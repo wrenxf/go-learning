@@ -1580,3 +1580,272 @@ io.WriteString(h, "123456")
 fmt.Printf("%x\n", h.Sum(nil))
 ```
 
+# 十一、Gin 文件上传
+
+**注意：需要在上传文件的 form 表单上面需要加入 enctype="multipart/form-data"**
+
+## 11.1、单文件上传
+
+https://gin-gonic.com/zh-cn/docs/examples/upload-file/single-file/
+
+官方示例：
+
+```go
+func main() {
+    router := gin.Default()
+    // 为 multipart forms 设置较低的内存限制 (默认是 32 MiB)
+    router.MaxMultipartMemory = 8 << 20 // 8 MiB
+    router.POST("/upload", func(c *gin.Context) {
+        // 单文件
+        file, _ := c.FormFile("file")
+        log.Println(file.Filename)
+        // 上传文件至指定目录
+        c.SaveUploadedFile(file, dst)
+        c.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", file.Filename))
+    })
+    router.Run(":8080")
+}
+```
+
+项目中实现文件上传：
+
+1、定义模板 需要在上传文件的 form 表单上面需要加入enctype="multipart/form-data
+
+```html
+<!-- 相当于给模板定义一个名字 define end 成对出现-->
+{{ define "admin/user/add.html" }}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+        <form action="/admin/user/doAdd" method="post" enctype="multipart/form-data">
+            用户名： <input type="text" name="username" placeholder="用户名"> <br> <br>
+            头 像：<input type="file" name="face"><br> <br>
+            <input type="submit" value="提交">
+        </form>
+    </body>
+</html>
+{{ end }}
+```
+
+2、定义业务逻辑
+
+```go
+func (c UserController) DoAdd(ctx *gin.Context) {
+    username := ctx.PostForm("username")
+    file, err := ctx.FormFile("face")
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{ "message": err.Error(), })
+        return
+    }
+    // 上传文件到指定的目录
+    dst := path.Join("./static/upload", file.Filename)
+    fmt.Println(dst)
+    ctx.SaveUploadedFile(file, dst)
+    ctx.JSON(http.StatusOK, gin.H{ "message": fmt.Sprintf("'%s' uploaded!", file.Filename), "username": username, })
+}
+```
+
+## 11.2、多文件上传--不同名字的多个文件
+
+1、定义模板 需要在上传文件的 form 表单上面需要加入 enctype="multipart/form-data"
+
+```html
+<!-- 相当于给模板定义一个名字 define end 成对出现-->
+{{ define "admin/user/add.html" }}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+        <form action="/admin/user/doAdd" method="post" enctype="multipart/form-data">
+            用户名： <input type="text" name="username" placeholder="用户名"> <br> <br>
+            头 像 1：<input type="file" name="face1"><br> <br>
+            头 像 2：<input type="file" name="face2"><br> <br>
+            <input type="submit" value="提交">
+        </form>
+    </body>
+</html>
+{{ end }}
+```
+
+2、定义业务逻辑
+
+```go
+func (c UserController) DoAdd(ctx *gin.Context) {
+    username := ctx.PostForm("username")
+    face1, err1 := ctx.FormFile("face1")
+    face2, err2 := ctx.FormFile("face2")
+    // 上传文件到指定的目录
+    if err1 == nil {
+        dst1 := path.Join("./static/upload", face1.Filename)
+        ctx.SaveUploadedFile(face1, dst1)
+    }
+    if err2 == nil {
+        dst2 := path.Join("./static/upload", face2.Filename)
+        ctx.SaveUploadedFile(face2, dst2)
+    }
+    ctx.JSON(http.StatusOK, gin.H{
+        "message": "文件上传成功", "username": username, })
+    // ctx.String(200, username)
+}
+```
+
+## 11.3、多文件上传--相同名字的多个文件
+
+参考：https://gin-gonic.com/zh-cn/docs/examples/upload-file/multiple-file/
+
+1、定义模板 需要在上传文件的 form 表单上面需要加入 enctype="multipart/form-data"
+
+```html
+<!-- 相当于给模板定义一个名字 define end 成对出现-->
+{{ define "admin/user/add.html" }}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+        <form action="/admin/user/doAdd" method="post" enctype="multipart/form-data">
+            用户名： <input type="text" name="username" placeholder="用户名"> <br> <br>
+            头 像 1：<input type="file" name="face[]"><br> <br>
+            头 像 2：<input type="file" name="face[]"><br> <br>
+            <input type="submit" value="提交">
+        </form>
+    </body>
+</html>
+{{ end }}
+```
+
+2、定义业务逻辑
+
+```go
+func (c UserController) DoAdd(ctx *gin.Context) {
+    username := ctx.PostForm("username")
+    // Multipart form
+    form, _ := ctx.MultipartForm()
+    files := form.File["face[]"]
+    // var dst;
+    for _, file := range files {
+        // 上传文件至指定目录
+        dst := path.Join("./static/upload", file.Filename)
+        ctx.SaveUploadedFile(file, dst)
+    }
+    ctx.JSON(http.StatusOK, gin.H{ "message": "文件上传成功", "username": username, })
+}
+```
+
+11.4、文件上传 按照日期存储
+
+1、定义模板 需要在上传文件的 form 表单上面需要加入 enctype="multipart/form-data"
+
+```html
+<!-- 相当于给模板定义一个名字 define end 成对出现-->
+{{ define "admin/user/add.html" }}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+        <form action="/admin/user/doAdd" method="post" enctype="multipart/form-data">
+            用户名： <input type="text" name="username" placeholder="用户名"> <br> <br>
+            头 像： <input type="file" name="face"><br> <br>
+            <input type="submit" value="提交">
+        </form>
+    </body>
+</html>
+{{ end }}
+```
+
+2、定义业务逻辑
+
+```go
+func (c UserController) DoAdd(ctx *gin.Context) {
+    username := ctx.PostForm("username")
+    //1、获取上传的文件
+    file, err1 := ctx.FormFile("face")
+    if err1 == nil {
+        //2、获取后缀名 判断类型是否正确 .jpg .png .gif .jpeg
+        extName := path.Ext(file.Filename)
+        allowExtMap := map[string]bool{ ".jpg": true, ".png": true, ".gif": true, ".jpeg": true, }
+        if _, ok := allowExtMap[extName]; !ok {
+            ctx.String(200, "文件类型不合法")
+            return
+        }
+        //3、创建图片保存目录 static/upload/20200623
+        day := models.GetDay()
+        dir := "./static/upload/" + day
+        if err := os.MkdirAll(dir, 0666); err != nil {
+            log.Error(err)
+        }
+        //4、生成文件名称 144325235235.png
+        fileUnixName := strconv.FormatInt(models.GetUnix(), 10)
+        //static/upload/20200623/144325235235.png
+        saveDir := path.Join(dir, fileUnixName+extName)
+        ctx.SaveUploadedFile(file, saveDir)
+    }
+    ctx.JSON(http.StatusOK, gin.H{ "message": "文件上传成功", "username": username, })
+    // ctx.String(200, username)
+}
+```
+
+3、models/tools.go
+
+```go
+package models
+import ( "crypto/md5"
+        "fmt"
+        "time"
+       )
+//时间戳间戳转换成日期
+func UnixToDate(timestamp int) string {
+    t := time.Unix(int64(timestamp), 0)
+    return t.Format("2006-01-02 15:04:05")
+}
+//日期转换成时间戳 2020-05-02 15:04:05
+func DateToUnix(str string) int64 {
+    template := "2006-01-02 15:04:05"
+    t, err := time.ParseInLocation(template, str, time.Local)
+    if err != nil {
+        beego.Info(err)
+        return 0
+    }
+    return t.Unix()
+}
+func GetUnix() int64 {
+    return time.Now().Unix()
+}
+func GetDate() string {
+    template := "2006-01-02 15:04:05"
+    return time.Now().Format(template)
+}
+func GetDay() string {
+    template := "20060102"
+    return time.Now().Format(template)
+}
+func Md5(str string) string {
+    data := []byte(str)
+    return fmt.Sprintf("%x\n", md5.Sum(data))
+}
+func Hello(in string) (out string) {
+    out = in + "world"
+    return
+}
+```
+
