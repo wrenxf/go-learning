@@ -586,3 +586,144 @@ alter table 表名 add constraint 外键名称 foreign key (外键字段名) ref
 ### 子查询
 
 ### 多表查询案例
+
+# Mysql 索引
+
+MySQL 索引的建立对于 MySQL 的高效运行是很重要的，索引可以大大提高 MySQL 的检索速度。
+
+如果没有索引，执行查询时候必须从第一条记录开始，扫描整个表的记录，直到符合要求的记录。如果有了索引，mysql 无需扫描任何记录即可顺序找到目标记录的位置。简单说来， 索引就是提高查找数据速度，数据量越多，效果越明显。
+
+Mysql 中常见的索引类型有普通索引、唯一索引、全文索引、空间索引 Spatial
+
+```mysql
+INSERT INTO users (`username`) SELECT username from users
+```
+
+## 1、创建普通索引
+
+基本语法：
+
+```mysql
+CREATE INDEX indexName ON mytable(username);
+```
+
+```mysql
+create index index_name on class(name);
+```
+
+## 2、查看索引
+
+```mysql
+show index from table_name
+```
+
+```mysql
+show index from class
+```
+
+```mysql
+show index from class\G
+```
+
+## 3、删除索引
+
+```mysql
+drop index index_name on class;
+```
+
+## 4、创建唯一索引（主键是一种唯一索引）
+
+```mysql
+create unique index index_name on class(name);
+```
+
+## 5、另外的一种创建和删除方式
+
+```mysql
+alter table class add index index_name(name);
+alter table class add unique index_name(name);
+alter table class drop index index_name;
+```
+
+# Mysql 事务
+
+事务处理可以用来维护数据库的完整性，保证成批的 SQL 语句要么全部执行，要么全部不执行。
+
+```mysql
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0; -- ----------------------------
+-- Table structure for user
+-- ---------------------------- DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+    `id` int(0) NOT NULL AUTO_INCREMENT, `username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL
+    DEFAULT NULL, `balance` decimal(10, 2) NULL DEFAULT NULL, PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+-- ----------------------------
+-- Records of user
+-- ----------------------------
+INSERT INTO `user` VALUES (1, '张三', 100.00);
+INSERT INTO `user` VALUES (2, '李四', 100.00);
+SET FOREIGN_KEY_CHECKS = 1;
+```
+
+例子：张三账户转账转出 100 元到李四的账户
+1、张三账户减去 100 元
+2、李四账户增加 100 元
+
+```mysql
+UPDATE user set balance = balance-100 WHERE id=1
+UPDATE user set balance = balance+100 WHERE id=2
+```
+
+如果我们更新完张三的账户后，准备更新李四账户的时候出现了错误（比如程序错误，或者数据库没法连接、或者异常断电等错误）。这样的话就导致了数据不一致。为了保证数据的一致性，这个时候我们就可以使用事务。
+
+**Mysql 中用 BEGIN, ROLLBACK, COMMIT 来实现事务**
+
+- BEGIN 开始一个事务
+- ROLLBACK 事务回滚
+- COMMIT 事务确认
+
+![image1](assets/image1.png)
+
+```mysql
+begin;
+update user set balance = balance-100 where id=1
+rollback;
+```
+
+![image2](assets/image2.png)
+
+```mysql
+begin;
+update user set balance = balance-100 where id=1;
+update user set balance = balance+100 where id=2;
+commit;
+```
+
+![image3](assets/image3.png)
+
+# Mysql 锁
+
+Mysql 中的锁有**表级锁**和**行级锁**，这里主要给大家讲讲最常用的表级锁
+
+## 1、添加读锁
+
+可以并发读，但是不能并发写，读锁期间，没释放锁之前不能进行写操作。
+
+使用场景：读取结果集的最新版本，同时防止其他事务产生更新该结果集
+主要用在需要数据依存关系时确认某行记录是否存在，并确保没有人对这个记录进行UPDATE 或者 DELETE 操作
+
+```mysql
+lock table user read;
+unlock tables;
+```
+
+## 2、添加写锁
+
+只有锁表的用户可以进行读写操作，其他用户不行 （并发下对商品库存的操作）
+
+```mysql
+lock table user write;
+unlock tables;
+```
+
