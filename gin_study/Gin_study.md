@@ -2034,23 +2034,3 @@ func main() {
 }
 ```
 
-# 十四、Gin 中使用 GORM 操作 mysql 数据库
-
-## 14.1、GORM 简单介绍
-
-GORM 是 Golang 的一个 orm 框架。简单说，ORM 就是通过实例对象的语法，完成关系型数据库的操作的技术，是"对象-关系映射"（Object/Relational Mapping） 的缩写。使用 ORM框架可以让我们更方便的操作数据库。
-
-GORM 官方支持的数据库类型有： MySQL, PostgreSQL, SQlite, SQL Server
-
-![image3](assets/image3.png)
-
-## 和原生 SQL 对比
-
-|          | 原生 `database/sql`                 | GORM                   |
-| :------- | :---------------------------------- | :--------------------- |
-| 写代码   | 手拼 SQL 字符串、手动 Scan 到结构体 | 结构体操作，自动映射   |
-| 建表     | 手写 DDL                            | AutoMigrate            |
-| 关联查询 | 手写 JOIN，容易错                   | Preload 一行           |
-| 学习成本 | 低，但重复劳动多                    | 有一点点，但省大量时间 |
-
-**我的建议**：两个都值得懂——SQL 是地基（你 MySQL.md 在学），GORM 是效率工具。练手项目直接用 GORM，等你遇到复杂查询（报表、聚合），再用 `Raw` 写原生 SQL 兜底，这也是真实项目的通用做法。
