@@ -250,3 +250,202 @@ func (con UserController) DeleteAll(c *gin.Context) {
 ```
 
 更多删除的方法参考:https://gorm.io/zh_CN/docs/delete.html
+
+## Gin GORM 查询语句详解
+
+https://gorm.io/zh_CN/docs/query.html
+
+1、Where
+=
+<
+\>
+<=
+\>=
+!=
+IS NOT NULL
+IS NULL
+BETWEEN AND
+NOT BETWEEN AND
+IN
+OR
+AND
+NOT
+LIKE
+
+```go
+nav := []models.Nav{}
+models.DB.Where("id<3").Find(&nav)
+c.JSON(http.StatusOK, gin.H{ "success": true, "result": nav, })
+```
+
+```go
+var n = 5
+nav := []models.Nav{}
+models.DB.Where("id>?", n).Find(&nav)
+c.JSON(http.StatusOK, gin.H{ "success": true, "result": nav, })
+```
+
+```go
+var n1 = 3
+var n2 = 9
+nav := []models.Nav{}
+models.DB.Where("id > ? AND id < ?", n1, n2).Find(&nav)
+c.JSON(http.StatusOK, gin.H{ "success": true, "result": nav, })
+```
+
+2、Or 条件
+
+```go
+nav := []models.Nav{}
+models.DB.Where("id=? OR id=?", 2, 3).Find(&nav)
+```
+
+```go
+nav := []models.Nav{}
+models.DB.Where("id=?", 2).Or("id=?", 3).Or("id=4").Find(&nav)
+```
+
+3、选择字段查询
+
+```go
+nav := []models.Nav{}
+models.DB.Select("id, title,url").Find(&nav)
+```
+
+4、排序 Limit 、Offset
+
+```go
+nav := []models.Nav{}
+models.DB.Where("id>2").Order("id Asc").Find(&nav)
+nav := []models.Nav{}
+models.DB.Where("id>2").Order("sort Desc").Order("id Asc").Find(&nav)
+nav := []models.Nav{}
+odels.DB.Where("id>1").Limit(2).Find(&nav)
+```
+
+跳过 2 条查询 2 条
+
+```go
+nav := []models.Nav{}
+models.DB.Where("id>1").Offset(2).Limit(2).Find(&nav)
+```
+
+5、获取总数
+
+```go
+nav := []models.Nav{}
+var num int
+models.DB.Where("id > ?", 2).Find(&nav).Count(&num)
+```
+
+6、Distinct
+
+从模型中选择不相同的值
+
+```go
+nav := []models.Nav{}
+models.DB.Distinct("title").Order("id desc").Find(&nav)
+c.JSON(200, gin.H{ "nav": nav, })
+```
+
+```go
+SELECT DISTINCT `title` FROM `nav` ORDER BY id desc
+```
+
+7、Scan
+
+```go
+type Result struct {
+Name string
+Age int
+}
+var result Result
+db.Table("users").Select("name", "age").Where("name = ?", "Antonio").Scan(&result)
+// 原生 SQL
+db.Raw("SELECT name, age FROM users WHERE name = ?", "Antonio").Scan(&result)
+var result []models.User
+models.DB.Raw("SELECT * FROM user").Scan(&result)
+fmt.Println(result)
+```
+
+**Scan 把"查询结果"按列名映射到"你指定的结构体"里。** 它跟 `Find` 最大的区别是：`Find` 只能把结果装回"模型本身"（因为 GORM 要靠模型推断表名、处理软删除、加载关联），而 **Scan 不挑食——任意结构体都能装**。
+
+| 对比项     | `Find`                      | `Scan`                                    |
+| :--------- | :-------------------------- | :---------------------------------------- |
+| 目标结构体 | 必须是模型（或模型切片）    | 任意结构体 / DTO                          |
+| 推断表名   | 从模型自动推断              | 自己不能推断（要配合 `Raw` 或 `Model()`） |
+| 关联加载   | 支持（`Preload` 等）        | 不支持                                    |
+| 软删除过滤 | 自动加 `deleted_at IS NULL` | `Raw` 场景**不会**自动加                  |
+| 典型场景   | 标准 CRUD                   | 原生 SQL、联表、统计、裁剪字段            |
+
+8、Join
+
+```go
+type result struct {
+Name string
+Email string
+}
+db.Model(&User{}).Select("users.name, emails.email").Joins("left join emails on emails.user_i
+d = users.id").Scan(&result{})
+SELECT users.name, emails.email FROM `users` left join emails on emails.user_id = users.i
+d
+```
+
+## Gin GORM 查看执行的 sql
+
+```go
+func init() {
+    dsn :=
+    "root:123456@tcp(192.168.0.6:3306)/gin?charset=utf8mb4&parseTime=True&loc=Local" DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+        QueryFields: true, })
+    // DB.Debug()
+    if err != nil {
+        fmt.Println(err)
+    }
+}
+```
+
+# 原生 SQL 和 SQL 生成器
+
+更多使用方法参考：
+
+https://gorm.io/zh_CN/docs/sql_builder.html
+
+1、使用原生 sql 删除 user 表中的一条数据
+
+```go
+result := models.DB.Exec("delete from user where id=?", 3)
+fmt.Println(result.RowsAffected)
+```
+
+2、使用原生 sql 修改 user 表中的一条数据
+
+```go
+result := models.DB.Exec("update user set username=? where id=2", "哈哈")
+fmt.Println(result.RowsAffected)
+```
+
+3、查询 uid=2 的数据
+
+```go
+var result models.User
+models.DB.Raw("SELECT * FROM user WHERE id = ?", 2).Scan(&result)
+fmt.Println(result)
+```
+
+4、查询 User 表中所有的数据
+
+```go
+var result []models.User
+models.DB.Raw("SELECT * FROM user").Scan(&result)
+fmt.Println(result)
+```
+
+5、统计 user 表的数量
+
+```go
+var count int
+row := models.DB.Raw("SELECT count(1) FROM user").Row(&count )
+row.Scan(&count)
+```
+
