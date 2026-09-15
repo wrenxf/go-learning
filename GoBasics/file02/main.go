@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	// 只读方式打开当前目录下的 main.go 文件
-	file, err := os.Open("D:/桌面/go-learning/GoBasics/file02/main.go")
+	// 只读方式打开当前目录下的 object_pool_test.go 文件
+	file, err := os.Open("D:/桌面/go-learning/GoBasics/file02/object_pool_test.go")
 	if err != nil {
 		fmt.Println("open file failed!, err:", err)
 		return
@@ -30,5 +30,5 @@ func main() {
 		content = append(content, tmp[:n]...)
 	}
 	fmt.Println(string(content))
-	
+
 }
