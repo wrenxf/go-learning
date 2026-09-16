@@ -1,39 +1,28 @@
 package main
 
+import "fmt"
+
 func main() {
-	/*切片的声明和初始化*/
-	/*var arr1 []int
-	fmt.Printf("%v %T %v\n", arr1, arr1, len(arr1))
+	// 切片声明和初始化
+	var slice1 []int                  // nil 切片
+	var slice2 = []int{1, 2, 3, 4, 5} // 直接初始化
+	slice3 := make([]int, 5)          // 使用 make 创建
+	slice4 := make([]int, 5, 10)      // 指定长度和容量
 
-	var arr2 = []int{1, 2, 3, 4}
-	fmt.Printf("%v %T %v\n", arr2, arr2, len(arr2))
+	fmt.Println("slice1:", slice1, "len:", len(slice1), "cap:", cap(slice1))
+	fmt.Println("slice2:", slice2, "len:", len(slice2), "cap:", cap(slice2))
+	fmt.Println("slice3:", slice3, "len:", len(slice3), "cap:", cap(slice3))
+	fmt.Println("slice4:", slice4, "len:", len(slice4), "cap:", cap(slice4))
 
-	var arr3 = []int{1: 2, 3: 4, 5: 6}
-	fmt.Printf("%v %T %v", arr3, arr3, len(arr3))*/
+	// 切片操作
+	slice2 = append(slice2, 6, 7) // 追加元素
+	fmt.Println("追加后:", slice2)
 
-	/*切片的循环遍历*/
-	/*var strSlice = []string{"php", "java", "nodejs", "golang"}
-	for i := 0; i < len(strSlice); i++ {
-		fmt.Println(strSlice[i])
-	}*/
+	subSlice := slice2[1:4] // 切片操作
+	fmt.Println("子切片:", subSlice)
 
-	/*var strSlice = []string{"php", "java", "nodejs", "golang"}
-	for k, v := range strSlice {
-		fmt.Println(k, v)
-	}*/
-
-	/*基于数组定义切片*/
-	/*a := [5]int{55, 56, 57, 58, 59}
-	b := a[:] //获取数组里的所有值
-	fmt.Printf("%v %T\n", a, a)
-	fmt.Printf("%v %T\n", b, b)
-
-	c := a[1:4] //左闭右开
-	fmt.Printf("%v %T\n", c, c)
-	d := a[2:]
-	fmt.Printf("%v-%T\n", d, d) //[57, 58, 59]
-	e := a[:3]                  //表示获取第三个下标前面的数据
-	fmt.Printf("%v-%T\n", e, e) //[55,56,57]*/
-
-	/*基于切片再切片*/
+	// 从数组创建切片
+	arr := [5]int{1, 2, 3, 4, 5}
+	slice5 := arr[1:4]
+	fmt.Printf("从数组创建:%T %v", slice5, slice5)
 }
